@@ -43,20 +43,31 @@ class PolicyEngine:
 				matched_prohibitions.append(prohibition)
 
 
-		if matched_permissions:
+		has_perms = bool(matched_permissions)
+		has_prohs = bool(matched_prohibitions)
+
+
+		if has_perms and not has_prohs:
 			return Verdict(
 				decision="PERMIT",
-				explanation= "Permited by rules: " + ", ".join(p.id for p in matched_permissions),
+				explanation= "Permitted by rules: " + ", ".join(p.id for p in matched_permissions),
 				obligations=[]
 			)
 		
-		if matched_prohibitions:
+		if has_prohs and not has_perms:
 			return Verdict(
 				decision="PROHIBIT",
 				explanation="Prohibited by rules: " + ", ".join(p.id for p in matched_prohibitions),
 				obligations=[]
 			)
 		
+
+		if has_perms and has_prohs:
+			return Verdict(
+				decision="DEFAULT_DENY",
+				explanation=f"Unresolved conflict: permissions [{", ".join(p.id for p in matched_permissions)}] vs prohibitions [{", ".join(p.id for p in matched_prohibitions)}]",
+				obligations=[]
+			)
 
 
 		return Verdict(
