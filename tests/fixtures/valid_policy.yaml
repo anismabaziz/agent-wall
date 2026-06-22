@@ -1,0 +1,18 @@
+permissions:
+  - id: Perm_ReadPublicDoc
+    action: read_file
+    constraint:
+      is_public: true
+    provisions: []
+
+prohibitions:
+  - id: Proh_DeleteUser
+    action: delete_user
+    constraint:
+      is_user_record: true
+
+obligations: []
+dispensations: []
+rule_priorities: []
+
+default_behavior: explicit_permit_implicit_prohibit
