@@ -3,7 +3,7 @@ from obligo.models import load_policy, PolicySet
 from pydantic import ValidationError
 
 def test_load_valid_policy():
-	policy_set = load_policy("tests/fixtures/valid_policy.yaml")
+	policy_set = load_policy("policies/p1_basic.yaml")
 
 	assert isinstance(policy_set, PolicySet)
 	assert policy_set.default_behavior == "explicit_permit_implicit_prohibit"
