@@ -1,0 +1,12 @@
+{
+  "name": "Basic prohibition: delete user record",
+  "policy": "policies/p1_basic.yaml",
+  "action": {
+    "subject": "agent_1",
+    "action_type": "delete_user",
+    "resource": "user://42",
+    "context": { "is_user_record": true }
+  },
+  "expected_decision": "PROHIBIT",
+  "expected_explanation_contains": "Proh_DeleteUser"
+}

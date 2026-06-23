@@ -30,6 +30,17 @@ class PolicyEngine:
 	
 
 	def evaluate(self, action: Action) -> Verdict:
+		try:
+			return self._evaluate(action)
+		except Exception as e:
+			return Verdict(
+				decision="DEFAULT_DENY",
+				explanation=f"Policy engine internal error ({type(e).__name__}): {e}",
+				obligations=[]
+			)
+
+
+	def _evaluate(self, action: Action) -> Verdict:
 		
 		matched_permissions = []
 		matched_prohibitions = []
