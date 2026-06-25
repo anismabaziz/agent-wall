@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Literal
 from obligo.models import PolicySet, Action, Permission, Prohibition
+from obligo.conflict import ConflictResolver
 
 class Verdict(BaseModel):
 	decision: Literal["PERMIT", "PROHIBIT", "DEFAULT_DENY"]
@@ -13,6 +14,7 @@ class PolicyEngine:
 
 	def __init__(self, policy_set: PolicySet):
 		self.policy_set = policy_set
+		self.conflict_resolver = ConflictResolver(policy_set.rule_priorities)
 
 	def _matches(self, action: Action, rule: Permission | Prohibition) -> bool:
 
@@ -74,6 +76,28 @@ class PolicyEngine:
 		
 
 		if has_perms and has_prohs:
+
+			resolution = self.conflict_resolver.resolve(
+				[p.id for p in matched_permissions],
+				[p.id for p in matched_prohibitions]
+			)
+
+			if resolution:
+				winning_id, priority_id = resolution
+
+				if winning_id in [p.id for p in matched_permissions]:
+					return Verdict(
+						decision="PERMIT",
+						explanation=f"Resolved by RulePriority {priority_id}: {winning_id} outranks conflicting prohibition(s)",
+						obligations=[]
+					)
+				else:
+					return Verdict(
+						decision="PROHIBIT",
+						explanation=f"Resolved by RulePriority {priority_id}: {winning_id} outranks conflicting permission(s)",
+						obligations=[]
+					)
+			
 			return Verdict(
 				decision="DEFAULT_DENY",
 				explanation=f"Unresolved conflict: permissions [{", ".join(p.id for p in matched_permissions)}] vs prohibitions [{", ".join(p.id for p in matched_prohibitions)}]",

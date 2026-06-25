@@ -37,6 +37,7 @@ class Dispensation(BaseModel):
 
 
 class RulePriority(BaseModel):
+	id: str
 	greater: str
 	lesser: str
 

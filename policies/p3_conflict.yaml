@@ -1,0 +1,21 @@
+permissions:
+  - id: Perm_ExportWithApproval
+    action: export_dataset
+    constraint:
+      is_regulated: true
+      has_compliance_credential: true
+
+prohibitions:
+  - id: Proh_ExportPII
+    action: export_dataset
+    constraint:
+      is_regulated: true
+
+obligations: []
+dispensations: []
+rule_priorities:
+  - id: PriorityApprovalOverProh
+    greater: Perm_ExportWithApproval
+    lesser: Proh_ExportPII
+
+default_behavior: explicit_permit_implicit_prohibit

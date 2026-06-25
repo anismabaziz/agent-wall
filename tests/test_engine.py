@@ -92,3 +92,45 @@ def test_evaluate_never_raises_uncaught_exception(p1_engine):
 		verdict = p1_engine.evaluate(action)
 		assert verdict.decision == "DEFAULT_DENY"
 		assert "boom" in verdict.explanation.lower()
+
+
+
+def test_engine_uses_rulepriority_to_permit():
+
+	engine = PolicyEngine(load_policy("policies/p3_conflict.yaml"))
+
+	action = Action(
+		subject="agent_1",
+		action_type="export_dataset",
+		resource="dataset://regulated",
+		context={
+			"is_regulated": True,
+			"has_compliance_credential": True
+		}
+	)
+
+	verdict = engine.evaluate(action)
+
+	assert verdict.decision == "PERMIT"
+	assert "PriorityApprovalOverProh" in verdict.explanation
+
+
+def test_engine_unresolved_conflict_defaults_to_deny():
+
+	engine = PolicyEngine(load_policy("policies/p4_tiebreak.yaml"))
+
+	action = Action(
+    subject="agent_1",
+    action_type="export_dataset",
+    resource="dataset://regulated",
+    context={"is_regulated": True, "has_manager_approval": True}
+  )
+
+	verdict = engine.evaluate(action)
+
+	assert verdict.decision == "DEFAULT_DENY"
+	assert "Unresolved conflict" in verdict.explanation
+
+
+
+
