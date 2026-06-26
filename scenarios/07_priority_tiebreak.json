@@ -1,16 +1,18 @@
 {
   "name": "Tiebreak: matching permission has no RulePriority vs prohibition",
   "policy": "policies/p4_tiebreak.yaml",
-  "action": {
-    "subject": "agent_1",
-    "action_type": "export_dataset",
-    "resource": "dataset://regulated",
-    "context": {
-      "is_regulated": true,
-      "has_manager_approval": true,
-      "has_compliance_credential": false
+  "actions": [
+    {
+      "subject": "agent_1",
+      "action_type": "export_dataset",
+      "resource": "dataset://regulated",
+      "context": {
+        "is_regulated": true,
+        "has_manager_approval": true,
+        "has_compliance_credential": false
+      }
     }
-  },
+  ],
   "expected_decision": "DEFAULT_DENY",
   "expected_explanation_contains": "Unresolved conflict"
 }

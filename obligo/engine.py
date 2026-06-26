@@ -60,11 +60,25 @@ class PolicyEngine:
 		has_prohs = bool(matched_prohibitions)
 
 
+		def _obligations_from(perms: list[Permission]) -> list[str]:
+			result = []
+			seen = set()
+
+			for perm in perms:
+				for obl_id in perm.provisions or []:
+					if obl_id not in seen:
+						seen.add(obl_id)
+						result.append(obl_id)
+			
+			return result
+
+
+
 		if has_perms and not has_prohs:
 			return Verdict(
 				decision="PERMIT",
 				explanation= "Permitted by rules: " + ", ".join(p.id for p in matched_permissions),
-				obligations=[]
+				obligations=_obligations_from(matched_permissions)
 			)
 		
 		if has_prohs and not has_perms:
@@ -86,10 +100,13 @@ class PolicyEngine:
 				winning_id, priority_id = resolution
 
 				if winning_id in [p.id for p in matched_permissions]:
+
+					winning_perm = next(p for p in matched_permissions if p.id == winning_id)
+
 					return Verdict(
 						decision="PERMIT",
 						explanation=f"Resolved by RulePriority {priority_id}: {winning_id} outranks conflicting prohibition(s)",
-						obligations=[]
+						obligations=_obligations_from([winning_perm])
 					)
 				else:
 					return Verdict(

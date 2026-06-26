@@ -1,12 +1,14 @@
 {
   "name": "Happy path: read public documents",
   "policy": "policies/p1_basic.yaml",
-  "action": {
-    "subject": "agent_1",
-    "action_type": "read_file",
-    "resource": "/docs/public/report.pdf",
-    "context": { "is_public": true }
-  },
+  "actions": [
+    {
+      "subject": "agent_1",
+      "action_type": "read_file",
+      "resource": "/docs/public/report.pdf",
+      "context": { "is_public": true }
+    }
+  ],
   "expected_decision": "PERMIT",
   "expected_explanation_contains": "Perm_ReadPublicDoc"
 }

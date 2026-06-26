@@ -1,15 +1,17 @@
 {
   "name": "RulePriority resolves conflict: permission outranks prohibition",
   "policy": "policies/p3_conflict.yaml",
-  "action": {
-    "subject": "agent_1",
-    "action_type": "export_dataset",
-    "resource": "dataset://regulated",
-    "context": {
-      "is_regulated": true,
-      "has_compliance_credential": true
+  "actions": [
+    {
+      "subject": "agent_1",
+      "action_type": "export_dataset",
+      "resource": "dataset://regulated",
+      "context": {
+        "is_regulated": true,
+        "has_compliance_credential": true
+      }
     }
-  },
+  ],
   "expected_decision": "PERMIT",
   "expected_explanation_contains": "PriorityApprovalOverProh"
 }

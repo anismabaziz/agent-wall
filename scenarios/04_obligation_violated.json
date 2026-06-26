@@ -1,0 +1,14 @@
+{
+  "name": "Obligation violated — deadline passes without fulfillment",
+  "policy": "policies/p2_obligation.yaml",
+  "actions": [
+    {
+      "subject": "agent_1",
+      "action_type": "install_software",
+      "resource": "host://prod-01",
+      "context": { "is_managed_host": true }
+    }
+  ],
+  "time_advance_minutes": 61,
+  "expected_final_obligation_status": "VIOLATED"
+}
