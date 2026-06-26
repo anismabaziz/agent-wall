@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Literal
-from obligo.models import PolicySet, Action, Permission, Prohibition
-from obligo.conflict import ConflictResolver
+from src.models import PolicySet, Action, Permission, Prohibition
+from src.conflict import ConflictResolver
 
 class Verdict(BaseModel):
 	decision: Literal["PERMIT", "PROHIBIT", "DEFAULT_DENY"]

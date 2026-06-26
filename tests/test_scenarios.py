@@ -2,8 +2,8 @@ import json
 import pytest
 from pathlib import Path
 
-from obligo.models import Action, load_policy
-from obligo.engine import PolicyEngine
+from src.models import Action, load_policy
+from src.engine import PolicyEngine
 
 
 SCENARIO_DIR = Path(__file__).parent.parent / "scenarios"

@@ -1,9 +1,9 @@
 import pytest
 from datetime import datetime, timedelta, timezone
 from freezegun import freeze_time
-from obligo.models import Action, load_policy
-from obligo.engine import PolicyEngine
-from obligo.obligations import ObligationManager, ObligationStatus
+from src.models import Action, load_policy
+from src.engine import PolicyEngine
+from src.obligations import ObligationManager, ObligationStatus
 
 
 def test_obligation_violated_after_deadline():

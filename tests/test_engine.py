@@ -1,6 +1,6 @@
 import pytest
-from obligo.models import Action, load_policy, PolicySet, Permission, Prohibition
-from obligo.engine import PolicyEngine
+from src.models import Action, load_policy, PolicySet, Permission, Prohibition
+from src.engine import PolicyEngine
 from unittest.mock import patch
 
 
