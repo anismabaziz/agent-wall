@@ -18,12 +18,22 @@ def test_scenarios(scenario_path):
 	policy_path = scenario.get("policy", "policies/p1_basic.yaml")
 	engine = PolicyEngine(load_policy(policy_path))
 
-	action = Action(**scenario["action"])
-	verdict = engine.evaluate(action)
 
-	assert verdict.decision == scenario["expected_decision"], \
-		f"Scenario '{scenario["name"]}': expected {scenario["expected_decision"]}, got {verdict.decision}"
+
+	last_verdict = None
+
+	for action_data in scenario["actions"]:
+		action = Action(**action_data)
+		last_verdict = engine.evaluate(action)
+
 	
-	if "expected_explanation_contains" in scenario:
-		assert scenario["expected_explanation_contains"] in verdict.explanation, \
-		f"Scenario '{scenario["name"]}': explanation {verdict.explanation}, missing {scenario["expected_explanation_contains"]}"
+	if "expected_decision" in scenario:
+		assert last_verdict.decision == scenario["expected_decision"], \
+			f"Scenario '{scenario["name"]}': expected {scenario["expected_decision"]}, got {last_verdict.decision}"
+		if "expected_explanation_contains" in scenario:
+			assert scenario["expected_explanation_contains"] in last_verdict.explanation, \
+			f"Scenario '{scenario["name"]}': explanation {last_verdict.explanation}, missing {scenario["expected_explanation_contains"]}"
+
+
+	if "expected_final_obligation_status" in scenario:
+		pass

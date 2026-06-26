@@ -1,0 +1,19 @@
+permissions:
+  - id: Perm_InstallSoftware
+    action: install_software
+    constraint:
+      is_managed_host: true
+    provisions:
+      - Ob_NotifyCISO
+
+prohibitions: []
+obligations:
+  - id: Ob_NotifyCISO
+    obliged_action: notify_ciso
+    deadline_minutes: 60
+    description: "Notify CISO of software installation"
+
+dispensations: []
+rule_priorities: []
+
+default_behavior: explicit_permit_implicit_prohibit
