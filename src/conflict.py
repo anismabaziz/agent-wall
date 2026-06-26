@@ -1,5 +1,5 @@
 from typing import Optional
-from obligo.models import RulePriority
+from src.models import RulePriority
 
 
 

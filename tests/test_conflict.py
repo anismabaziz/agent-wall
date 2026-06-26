@@ -1,6 +1,6 @@
 import pytest
-from obligo.models import RulePriority
-from obligo.conflict import ConflictResolver
+from src.models import RulePriority
+from src.conflict import ConflictResolver
 
 
 def test_conflict_resolver_direct_priority():

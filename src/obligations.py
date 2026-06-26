@@ -2,7 +2,7 @@ from enum import Enum
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from pydantic import BaseModel
-from obligo.models import Action
+from src.models import Action
 import asyncio
 
 class ObligationStatus(str, Enum):

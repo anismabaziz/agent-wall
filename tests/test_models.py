@@ -1,5 +1,5 @@
 import pytest
-from obligo.models import load_policy, PolicySet
+from src.models import load_policy, PolicySet
 from pydantic import ValidationError
 
 def test_load_valid_policy():
