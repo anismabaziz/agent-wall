@@ -70,7 +70,7 @@ class ObligationManager:
 		"""
 
 		for record in self._obligations.values():
-			if record.status == "PENDING":
+			if record.status != "PENDING":
 				continue
 
 			if action.action_type == record.obliged_action:
@@ -131,6 +131,8 @@ class ObligationManager:
 
 		if status: 
 			records = [r for r in records if r.status == status]
+
+		return records
 
 
 

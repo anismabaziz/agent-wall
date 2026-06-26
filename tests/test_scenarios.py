@@ -2,7 +2,7 @@ import json
 import pytest
 from pathlib import Path
 
-from obligo.models import PolicySet, Action, load_policy
+from obligo.models import Action, load_policy
 from obligo.engine import PolicyEngine
 
 
