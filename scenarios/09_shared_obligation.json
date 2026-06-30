@@ -1,0 +1,19 @@
+{
+  "name": "Shared obligation fulfilled once",
+  "policy": "policies/p6_shared.yaml",
+  "actions": [
+    {
+      "subject": "agent_1",
+      "action_type": "install_software",
+      "resource": "host://prod-01",
+      "context": { "is_managed_host": true }
+    },
+    {
+      "subject": "agent_1",
+      "action_type": "notify_ciso",
+      "resource": "ciso@company.com",
+      "context": {}
+    }
+  ],
+  "expected_final_obligation_status": "FULFILLED"
+}
