@@ -2,13 +2,14 @@ from enum import Enum
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from pydantic import BaseModel
-from src.models import Action
+from src.models import Action, Dispensation
 import asyncio
 
 class ObligationStatus(str, Enum):
 	PENDING = "PENDING"
 	FULFILLED = "FULFILLED"
 	VIOLATED = "VIOLATED"
+	WAIVED = "WAIVED"
 
 class ObligationRecord(BaseModel):
 	id: str
@@ -20,8 +21,9 @@ class ObligationRecord(BaseModel):
 	status: ObligationStatus = ObligationStatus.PENDING
 	fulfilled_at: Optional[datetime] = None
 	violated_at: Optional[datetime] = None
-
 	fulfillment_constraint: dict = {}
+	waived_at: Optional[datetime] = None
+	waived_by: Optional[str] = None
 
 
 
@@ -133,10 +135,32 @@ class ObligationManager:
 			records = [r for r in records if r.status == status]
 
 		return records
+	
 
 
+	def check_dispensation(self, action: Action, dispensations: list[Dispensation]) -> Optional[ObligationRecord]:
+		"""
+		Check if any dispensation rule matches the current context.
+		if so it waives the named obligation
+		"""
+
+		for disp in dispensations:
+			if self._constraint_match(action.context, disp.constraint):
+				for record in self._obligations.values():
+					if (record.status == ObligationStatus.PENDING and record.obligation_id == disp.waives):
+						record.status = ObligationStatus.WAIVED
+						record.waived_at = datetime.now(timezone.utc)
+						record.waived_by = disp.id
+						return record
+					
+		return None
+
+	
 
 
+	def _constraint_match(self, context: dict, constraint: dict) -> bool:
 
-
-
+		for key, expected in constraint.items():
+			if key not in context or context[key] != expected:
+				return False
+		return True

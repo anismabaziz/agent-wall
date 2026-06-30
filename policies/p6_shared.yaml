@@ -1,0 +1,27 @@
+permissions:
+  - id: Perm_InstallSoftware
+    action: install_software
+    constraint:
+      is_managed_host: true
+    provisions:
+      - Ob_LogAccess
+
+  - id: Perm_UpdateSoftware
+    action: update_software
+    constraint:
+      is_managed_host: true
+    provisions:
+      - Ob_LogAccess
+
+prohibitions: []
+
+obligations:
+  - id: Ob_LogAccess
+    obliged_action: log_access
+    deadline_minutes: 60
+    description: "Log all software changes"
+
+dispensations: []
+rule_priorities: []
+
+default_behavior: explicit_permit_implicit_prohibit
