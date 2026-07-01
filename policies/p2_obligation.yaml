@@ -7,6 +7,7 @@ permissions:
       - Ob_NotifyCISO
 
 prohibitions: []
+
 obligations:
   - id: Ob_NotifyCISO
     obliged_action: notify_ciso

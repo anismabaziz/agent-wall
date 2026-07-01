@@ -4,6 +4,9 @@ from pathlib import Path
 
 from src.models import Action, load_policy
 from src.engine import PolicyEngine
+from src.obligations import ObligationManager, ObligationStatus
+from freezegun import freeze_time
+from datetime import datetime, timezone, timedelta
 
 
 SCENARIO_DIR = Path(__file__).parent.parent / "scenarios"
@@ -15,10 +18,14 @@ def test_scenarios(scenario_path):
 		scenario = json.load(f)
 
 	
+	# init policy and engine
 	policy_path = scenario.get("policy", "policies/p1_basic.yaml")
-	engine = PolicyEngine(load_policy(policy_path))
+	policy = load_policy(policy_path)
+	engine = PolicyEngine(policy)
 
-
+	# init manager
+	manager = ObligationManager(poll_interval_seconds=1)
+	created_records = []
 
 	last_verdict = None
 
@@ -26,14 +33,49 @@ def test_scenarios(scenario_path):
 		action = Action(**action_data)
 		last_verdict = engine.evaluate(action)
 
-	
+		# register obligations from permitted actions
+		if last_verdict.decision == "PERMIT" and last_verdict.obligations:
+			for obl_id in last_verdict.obligations:
+				obligation = next((o for o in policy.obligations if o.id == obl_id), None)
+
+				if obligation:
+					record = manager.register(
+						obligation_id=obl_id,
+						permission_id="unknown",
+						subject=action.subject,
+						obliged_action=obligation.obliged_action,
+						deadline_minutes=obligation.deadline_minutes
+					)
+					created_records.append(record)
+
+		# check if this action fulfills any obligation
+		manager.check_fulfillment(action)
+
+		# check if action triggers any dispensations
+		if policy.dispensations:
+			manager.check_dispensation(action, policy.dispensations)
+
+
+	# time advance for violated tests
+	if "time_advance_minutes" in scenario:
+		with freeze_time(datetime.now(timezone.utc) + timedelta(minutes=scenario["time_advance_minutes"])):
+			manager._check_deadlines()
+
+
+	# assert verdict for simple scenarios
 	if "expected_decision" in scenario:
 		assert last_verdict.decision == scenario["expected_decision"], \
 			f"Scenario '{scenario["name"]}': expected {scenario["expected_decision"]}, got {last_verdict.decision}"
+		
 		if "expected_explanation_contains" in scenario:
 			assert scenario["expected_explanation_contains"] in last_verdict.explanation, \
 			f"Scenario '{scenario["name"]}': explanation {last_verdict.explanation}, missing {scenario["expected_explanation_contains"]}"
 
-
+	# assert obligation status
 	if "expected_final_obligation_status" in scenario:
-		pass
+		expected = getattr(ObligationStatus, scenario["expected_final_obligation_status"])
+		assert created_records, f"Scenario '{scenario["name"]}': no obligations were created"
+
+		last_record = created_records[-1]
+		assert last_record.status == expected, \
+		f"Scenario '{scenario["name"]}': expected {expected.value}, got {last_record.status}" 

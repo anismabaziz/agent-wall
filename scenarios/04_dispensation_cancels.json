@@ -1,6 +1,6 @@
 {
   "name": "Dispensation waives pending obligation",
-  "policy": "policies/p5_dispensation.yaml",
+  "policy": "policies/p4_dispensation.yaml",
   "actions": [
     {
       "subject": "agent_1",
@@ -10,7 +10,7 @@
     },
     {
       "subject": "agent_1",
-      "action_type": "some_action",
+      "action_type": "check_exemption",
       "resource": "exempt_party",
       "context": { "is_exempt_counterparty": true }
     }

@@ -3,7 +3,6 @@ permissions:
     action: read_file
     constraint:
       is_public: true
-    provisions: []
 
 prohibitions:
   - id: Proh_DeleteUser

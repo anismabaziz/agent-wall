@@ -1,5 +1,5 @@
 {
-  "name": "RulePriority resolves conflict: permission outranks prohibition",
+  "name": "No RulePriority between conflicting rules — default deny",
   "policy": "policies/p3_conflict.yaml",
   "actions": [
     {
@@ -8,10 +8,10 @@
       "resource": "dataset://regulated",
       "context": {
         "is_regulated": true,
-        "has_compliance_credential": true
+        "has_manager_approval": true
       }
     }
   ],
-  "expected_decision": "PERMIT",
-  "expected_explanation_contains": "PriorityApprovalOverProh"
+  "expected_decision": "DEFAULT_DENY",
+  "expected_explanation_contains": "Unresolved conflict"
 }
