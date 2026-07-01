@@ -191,3 +191,113 @@ def test_late_dispensation_not_applied():
 
 	assert record.status == ObligationStatus.VIOLATED
 	assert result is None
+
+
+def test_dispensation_waives_pending_obligation():
+	"""
+	Dispensation arriving while PENDING => WAIVED.
+	"""
+	
+	manager = ObligationManager()
+
+	record = manager.register(
+			obligation_id="Ob_NotifyCISO",
+			permission_id="Perm_InstallSoftware",
+			subject="agent_1",
+			obliged_action="notify_ciso",
+			deadline_minutes=60
+	)
+	assert record.status == ObligationStatus.PENDING
+
+	disp_action = Action(
+			subject="agent_1",
+			action_type="check_exemption",
+			resource="exempt_party",
+			context={"is_exempt_counterparty": True}
+	)
+	dispensation = Dispensation(
+			id="Disp_ExemptCISO",
+			constraint={"is_exempt_counterparty": True},
+			waives="Ob_NotifyCISO"
+	)
+	result = manager.check_dispensation(disp_action, [dispensation])
+
+	assert result is not None
+	assert result.status == ObligationStatus.WAIVED
+	assert result.waived_by == "Disp_ExemptCISO"
+
+
+def test_dispensation_wrong_constraint_no_waive():
+	"""
+	Dispensation constraint doesn't match action context => no waiver.
+	"""
+
+	manager = ObligationManager()
+
+	record = manager.register(
+			obligation_id="Ob_NotifyCISO",
+			permission_id="Perm_Install",
+			subject="agent_1",
+			obliged_action="notify_ciso",
+			deadline_minutes=60
+	)
+
+	disp_action = Action(
+			subject="agent_1",
+			action_type="check_exemption",
+			resource="party",
+			context={"is_exempt_counterparty": False}  # WRONG: False, not True
+	)
+	dispensation = Dispensation(
+			id="Disp_Exempt",
+			constraint={"is_exempt_counterparty": True},  # expects True
+			waives="Ob_NotifyCISO"
+	)
+	result = manager.check_dispensation(disp_action, [dispensation])
+
+	assert result is None
+	assert record.status == ObligationStatus.PENDING
+
+
+def test_fulfillment_matches_correct_obligation():
+	"""
+	Two pending obligations, fulfillment only closes the matching one.
+	"""
+
+	manager = ObligationManager()
+
+	manager.register(
+			obligation_id="Ob_NotifyCISO",
+			permission_id="Perm_Install",
+			subject="agent_1",
+			obliged_action="notify_ciso",
+			deadline_minutes=60
+	)
+	manager.register(
+			obligation_id="Ob_LogAccess",
+			permission_id="Perm_Read",
+			subject="agent_1",
+			obliged_action="log_access",
+			deadline_minutes=30
+	)
+
+	pending = manager.get_obligations(ObligationStatus.PENDING)
+	assert len(pending) == 2
+
+	action = Action(
+			subject="agent_1",
+			action_type="log_access",  # matches Ob_LogAccess, not Ob_NotifyCISO
+			resource="audit",
+			context={}
+	)
+	result = manager.check_fulfillment(action)
+
+	assert result is not None
+	assert result.obligation_id == "Ob_LogAccess"
+
+	pending = manager.get_obligations(ObligationStatus.PENDING)
+	assert len(pending) == 1
+	assert pending[0].obligation_id == "Ob_NotifyCISO"
+
+	fulfilled = manager.get_obligations(ObligationStatus.FULFILLED)
+	assert len(fulfilled) == 1

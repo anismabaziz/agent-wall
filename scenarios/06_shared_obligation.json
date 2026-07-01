@@ -1,6 +1,6 @@
 {
   "name": "Shared obligation fulfilled once",
-  "policy": "policies/p6_shared.yaml",
+  "policy": "policies/p6_shared_obligation.yaml",
   "actions": [
     {
       "subject": "agent_1",
@@ -10,8 +10,8 @@
     },
     {
       "subject": "agent_1",
-      "action_type": "notify_ciso",
-      "resource": "ciso@company.com",
+      "action_type": "log_access",
+      "resource": "audit://system",
       "context": {}
     }
   ],

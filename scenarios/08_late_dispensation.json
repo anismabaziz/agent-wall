@@ -1,18 +1,12 @@
 {
-  "name": "Late dispensation does not retroactively waive violated obligation",
-  "policy": "policies/p5_dispensation.yaml",
+  "name": "Obligation violated — no fulfillment",
+  "policy": "policies/p2_obligation.yaml",
   "actions": [
     {
       "subject": "agent_1",
       "action_type": "install_software",
       "resource": "host://prod-01",
       "context": { "is_managed_host": true }
-    },
-    {
-      "subject": "agent_1",
-      "action_type": "some_action",
-      "resource": "exempt_party",
-      "context": { "is_exempt_counterparty": true }
     }
   ],
   "time_advance_minutes": 61,

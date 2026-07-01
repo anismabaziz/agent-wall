@@ -5,6 +5,12 @@ permissions:
       is_regulated: true
       has_compliance_credential: true
 
+  - id: Perm_ExportWithManagerApproval
+    action: export_dataset
+    constraint:
+      is_regulated: true
+      has_manager_approval: true
+
 prohibitions:
   - id: Proh_ExportPII
     action: export_dataset
@@ -13,9 +19,12 @@ prohibitions:
 
 obligations: []
 dispensations: []
+
 rule_priorities:
   - id: PriorityApprovalOverProh
     greater: Perm_ExportWithApproval
     lesser: Proh_ExportPII
+
+# NOTE: No RulePriority for Perm_ExportWithManagerApproval vs Proh_ExportPII
 
 default_behavior: explicit_permit_implicit_prohibit

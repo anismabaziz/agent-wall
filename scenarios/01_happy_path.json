@@ -1,5 +1,5 @@
 {
-  "name": "Happy path: read public documents",
+  "name": "Happy path: read public document",
   "policy": "policies/p1_basic.yaml",
   "actions": [
     {
