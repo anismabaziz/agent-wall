@@ -1,0 +1,33 @@
+permissions:
+  - id: Perm_ApprovedHighValue
+    action: execute_payment
+    constraint:
+      is_high_value: true
+      has_treasury_approval: true
+    provisions:
+      - Ob_FileCTR
+
+prohibitions:
+  - id: Proh_AutoHighValue
+    action: execute_payment
+    constraint:
+      is_high_value: true
+
+obligations:
+  - id: Ob_FileCTR
+    obliged_action: file_ctr
+    deadline_minutes: 21600 # 15 days = 15 * 24 * 60
+    description: "File CTR with FinCEN within 15 days"
+
+dispensations:
+  - id: Disp_ExemptCTR
+    constraint:
+      is_exempt_counterparty: true
+    waives: Ob_FileCTR
+
+rule_priorities:
+  - id: Priority_ApprovalOverProh
+    greater: Perm_ApprovedHighValue
+    lesser: Proh_AutoHighValue
+
+default_behavior: explicit_permit_implicit_prohibit

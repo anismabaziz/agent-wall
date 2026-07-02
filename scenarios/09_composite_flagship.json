@@ -1,0 +1,17 @@
+{
+  "name": "Flagship: approved high-value payment with CTR obligation",
+  "policy": "policies/p5_composite.yaml",
+  "actions": [
+    {
+      "subject": "payments_agent_1",
+      "action_type": "execute_payment",
+      "resource": "transaction://high-value-001",
+      "context": {
+        "is_high_value": true,
+        "has_treasury_approval": true
+      }
+    }
+  ],
+  "expected_decision": "PERMIT",
+  "expected_explanation_contains": "Priority_ApprovalOverProh"
+}
