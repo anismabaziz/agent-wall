@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from pydantic import BaseModel
 from src.models import Action, Dispensation
+from src.audit import AuditLogger
 import asyncio
 
 class ObligationStatus(str, Enum):
@@ -29,10 +30,11 @@ class ObligationRecord(BaseModel):
 
 class ObligationManager:
 
-	def __init__(self, poll_interval_seconds: int = 5):
+	def __init__(self, poll_interval_seconds: int = 5, audit_logger: Optional[AuditLogger] = None):
 		self._obligations: dict[str, ObligationRecord] = {}
 		self._poll_interval = poll_interval_seconds
 		self._poll_task: Optional[asyncio.Task] = None
+		self.audit_logger = audit_logger
 
 	
 	def register(
@@ -61,6 +63,9 @@ class ObligationManager:
 
 		self._obligations[record.id] = record
 
+		if self.audit_logger:
+			self.audit_logger.log_obligation(record, "CREATED")
+
 		return record
 	
 
@@ -79,6 +84,9 @@ class ObligationManager:
 				if action.subject == record.subject:
 					record.status = ObligationStatus.FULFILLED
 					record.fulfilled_at = datetime.now(timezone.utc)
+
+					if self.audit_logger:
+						self.audit_logger.log_obligation(record, "FULFILLED", action)
 					return record
 				
 
@@ -96,6 +104,9 @@ class ObligationManager:
 			if record.status == ObligationStatus.PENDING and now > record.deadline:
 				record.status = ObligationStatus.VIOLATED
 				record.violated_at = now
+
+				if self.audit_logger:
+					self.audit_logger.log_obligation(record, "VIOLATED")
 
 
 	async def start_polling(self):
@@ -151,6 +162,10 @@ class ObligationManager:
 						record.status = ObligationStatus.WAIVED
 						record.waived_at = datetime.now(timezone.utc)
 						record.waived_by = disp.id
+
+						if self.audit_logger:
+							self.audit_logger.log_obligation(record, "WAIVED")
+						
 						return record
 					
 		return None
