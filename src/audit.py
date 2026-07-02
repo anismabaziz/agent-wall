@@ -4,6 +4,7 @@ from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from src.models import Action
 from src.engine import Verdict
+from src.obligations import ObligationRecord
 
 Base = declarative_base()
 
@@ -47,7 +48,6 @@ class AuditLogger:
 			self, 
 			action: Action, 
 			verdict: Verdict, 
-			explanation: str,
 			matched_rule_ids: list[str] = None,
 			obligation_change: tuple[str, str] = None # (obl_id, status)
 			):
@@ -58,7 +58,7 @@ class AuditLogger:
 				action_type=action.action_type,
 				action_resource=action.resource,
 				verdict=verdict.decision,
-				explanation=explanation,
+				explanation=verdict.explanation,
 				matched_rule_ids=",".join(matched_rule_ids or []),
 				policy_file=self.policy_file,
 				obligation_id=obligation_change[0] if obligation_change else None,
@@ -69,6 +69,25 @@ class AuditLogger:
 			session.commit()
 
 			return entry.id
+		
+
+	def log_obligation(self, obligation_record: ObligationRecord, event: str, action: Action = None):
+
+		with Session() as session:
+			entry = AuditEntry(
+				action_subject=action.subject if action else obligation_record.subject,
+				action_type=action.action_type if action else f"obligation: {obligation_record.obligation_id}",
+				action_resource=action.resource if action else "",
+				verdict=f"OBLIGATION_{event}",
+				explanation=f"Obligation {obligation_record.id} {event.lower()}",
+				obligation_id=obligation_record.id,
+				obligation_status_change=event,
+				policy_file=self.policy_file
+			)
+
+			session.add(entry)
+			session.commit()
+
 		
 
 	def query(self, limit: int = 100, offset: int = 0):

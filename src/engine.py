@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Optional
 from src.models import PolicySet, Action, Permission, Prohibition
 from src.conflict import ConflictResolver
+from src.audit import AuditLogger
 
 class Verdict(BaseModel):
 	decision: Literal["PERMIT", "PROHIBIT", "DEFAULT_DENY"]
@@ -9,12 +10,12 @@ class Verdict(BaseModel):
 	obligations: list[str] = []
 
 
-
 class PolicyEngine:
 
-	def __init__(self, policy_set: PolicySet):
+	def __init__(self, policy_set: PolicySet, audit_logger: Optional[AuditLogger] = None):
 		self.policy_set = policy_set
 		self.conflict_resolver = ConflictResolver(policy_set.rule_priorities)
+		self.audit_logger = audit_logger
 
 	def _matches(self, action: Action, rule: Permission | Prohibition) -> bool:
 
@@ -35,11 +36,20 @@ class PolicyEngine:
 		try:
 			return self._evaluate(action)
 		except Exception as e:
-			return Verdict(
+
+			verdict = Verdict(
 				decision="DEFAULT_DENY",
 				explanation=f"Policy engine internal error ({type(e).__name__}): {e}",
 				obligations=[]
 			)
+
+			if self.audit_logger:
+				self.audit_logger.log_decision(
+					action=action,
+					verdict=verdict
+				)
+
+			return verdict
 
 
 	def _evaluate(self, action: Action) -> Verdict:
@@ -71,26 +81,42 @@ class PolicyEngine:
 						result.append(obl_id)
 			
 			return result
+		
+
+		def _log(verdict: Verdict, matched_rules: list = None):
+			if self.audit_logger:
+				self.audit_logger.log_decision(
+					action=action,
+					verdict=verdict,
+					matched_rule_ids=matched_rules or []
+				)
+
+			return verdict
 
 
 
+
+		# only permissions match => PERMIT
 		if has_perms and not has_prohs:
-			return Verdict(
+			verdict = Verdict(
 				decision="PERMIT",
 				explanation= "Permitted by rules: " + ", ".join(p.id for p in matched_permissions),
 				obligations=_obligations_from(matched_permissions)
 			)
+			return _log(verdict, matched_permissions)
 		
+		# only prohibitions match => PROHIBIT
 		if has_prohs and not has_perms:
-			return Verdict(
+			verdict = Verdict(
 				decision="PROHIBIT",
 				explanation="Prohibited by rules: " + ", ".join(p.id for p in matched_prohibitions),
 				obligations=[]
 			)
+			return _log(verdict, matched_prohibitions)
 		
 
+		# both match => conflict resolution part
 		if has_perms and has_prohs:
-
 			resolution = self.conflict_resolver.resolve(
 				[p.id for p in matched_permissions],
 				[p.id for p in matched_prohibitions]
@@ -102,31 +128,39 @@ class PolicyEngine:
 				if winning_id in [p.id for p in matched_permissions]:
 
 					winning_perm = next(p for p in matched_permissions if p.id == winning_id)
-
-					return Verdict(
+					verdict = Verdict(
 						decision="PERMIT",
 						explanation=f"Resolved by RulePriority {priority_id}: {winning_id} outranks conflicting prohibition(s)",
 						obligations=_obligations_from([winning_perm])
 					)
+					return _log(verdict, matched_permissions + matched_prohibitions)
+				
 				else:
-					return Verdict(
+
+					verdict = Verdict(
 						decision="PROHIBIT",
 						explanation=f"Resolved by RulePriority {priority_id}: {winning_id} outranks conflicting permission(s)",
 						obligations=[]
 					)
+					return _log(verdict, matched_permissions + matched_prohibitions)
 			
-			return Verdict(
+
+			# unresolved conflict
+			verdict = Verdict(
 				decision="DEFAULT_DENY",
 				explanation=f"Unresolved conflict: permissions [{", ".join(p.id for p in matched_permissions)}] vs prohibitions [{", ".join(p.id for p in matched_prohibitions)}]",
 				obligations=[]
 			)
+			return _log(verdict, matched_permissions + matched_prohibitions)
 
 
-		return Verdict(
+		# nothing matches => DEFAULT_DENY
+		verdict = Verdict(
 			decision="DEFAULT_DENY",
 			explanation="No matching permission rules found",
 			obligations=[]
 		)
+		return _log(verdict, matched_permissions + matched_prohibitions)
 
 
 
