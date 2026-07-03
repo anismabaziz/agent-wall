@@ -3,9 +3,9 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import Optional, List
 
-from src.models import Action, load_policy
+from src.models import Action, load_policy, ObligationStatus
 from src.engine import PolicyEngine
-from src.obligations import ObligationManager, ObligationStatus
+from src.obligations import ObligationManager
 from src.audit import AuditLogger
 
 
@@ -58,14 +58,15 @@ async def evaluate(request: EvaluateRequest):
 	if verdict.decision == "PERMIT" and verdict.obligations:
 		for obl_id in verdict.obligations:
 
-			obligation = next((o for o in verdict.obligations if o.id == obl_id), None)
+			obligation = next((o for o in verdict.obligations if o == obl_id), None)
 
 			if obligation:
 				obligation_manager.register(
 					obligation_id=obl_id,
 					permission_id="unknown",
 					subject=request.subject,
-					obliged_action=obligation
+					obliged_action=obligation,
+					deadline_minutes=21400
 				)
 	
 	# check dispensation

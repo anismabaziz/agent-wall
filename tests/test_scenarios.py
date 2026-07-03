@@ -2,9 +2,9 @@ import json
 import pytest
 from pathlib import Path
 
-from src.models import Action, load_policy
+from src.models import Action, load_policy, ObligationStatus
 from src.engine import PolicyEngine
-from src.obligations import ObligationManager, ObligationStatus
+from src.obligations import ObligationManager
 from freezegun import freeze_time
 from datetime import datetime, timezone, timedelta
 

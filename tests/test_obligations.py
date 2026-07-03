@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from freezegun import freeze_time
-from src.models import Action, load_policy, PolicySet, Permission, Obligation, Dispensation
+from src.models import Action, load_policy, PolicySet, Permission, Obligation, Dispensation, ObligationStatus
 from src.engine import PolicyEngine
-from src.obligations import ObligationManager, ObligationStatus
+from src.obligations import ObligationManager
 
 
 def test_obligation_violated_after_deadline():

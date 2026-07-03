@@ -1,13 +1,7 @@
-from pydantic import BaseModel
-from typing import Literal, Optional
-from src.models import PolicySet, Action, Permission, Prohibition
+from typing import Optional
+from src.models import PolicySet, Action, Permission, Prohibition, Verdict
 from src.conflict import ConflictResolver
 from src.audit import AuditLogger
-
-class Verdict(BaseModel):
-	decision: Literal["PERMIT", "PROHIBIT", "DEFAULT_DENY"]
-	explanation: str
-	obligations: list[str] = []
 
 
 class PolicyEngine:
@@ -88,7 +82,7 @@ class PolicyEngine:
 				self.audit_logger.log_decision(
 					action=action,
 					verdict=verdict,
-					matched_rule_ids=matched_rules or []
+					matched_rule_ids=[r.id for r in matched_rules] or []
 				)
 
 			return verdict
