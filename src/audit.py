@@ -1,15 +1,12 @@
 from datetime import datetime, timezone
-from typing import Optional
 from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
-from src.models import Action
-from src.engine import Verdict
-from src.obligations import ObligationRecord
+from src.models import Action, Verdict, ObligationRecord
 
 Base = declarative_base()
 
 class AuditEntry(Base):
-	__table_name__ = "audit_log"
+	__tablename__ = "audit_log"
 
 	id = Column(Integer, primary_key=True, autoincrement=True)
 	timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -1,30 +1,10 @@
-from enum import Enum
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from pydantic import BaseModel
-from src.models import Action, Dispensation
+from src.models import Action, Dispensation, ObligationRecord, ObligationStatus
 from src.audit import AuditLogger
 import asyncio
 
-class ObligationStatus(str, Enum):
-	PENDING = "PENDING"
-	FULFILLED = "FULFILLED"
-	VIOLATED = "VIOLATED"
-	WAIVED = "WAIVED"
 
-class ObligationRecord(BaseModel):
-	id: str
-	obligation_id: str
-	permission_id: str
-	subject: str
-	obliged_action: str
-	deadline: datetime
-	status: ObligationStatus = ObligationStatus.PENDING
-	fulfilled_at: Optional[datetime] = None
-	violated_at: Optional[datetime] = None
-	fulfillment_constraint: dict = {}
-	waived_at: Optional[datetime] = None
-	waived_by: Optional[str] = None
 
 
 
