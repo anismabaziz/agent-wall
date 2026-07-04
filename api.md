@@ -1,6 +1,6 @@
 # Terminal 1: Start server
 
-uvicorn obligo.api:app --reload
+uvicorn agent_wall.api:app --reload
 
 # Terminal 2: Test flagship scenario
 
