@@ -30,7 +30,7 @@ class AuditEntry(Base):
 
 
 # setup
-_engine = create_engine("sqlite:///obligo_audit.db", echo=False)
+_engine = create_engine("sqlite:///agent_wall_audit.db", echo=False)
 Base.metadata.create_all(_engine)
 Session = sessionmaker(bind=_engine)
 

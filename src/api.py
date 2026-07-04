@@ -10,7 +10,7 @@ from src.audit import AuditLogger
 
 
 app = FastAPI(
-	title="obligo",
+	title="agent-wall",
 	description="Deontic Policy Firewall for Agentic AI"
 )
 
