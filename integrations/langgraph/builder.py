@@ -3,8 +3,8 @@ from langchain_core.tools import BaseTool
 from src.engine import PolicyEngine
 from src.obligations import ObligationManager
 from src.audit import AuditLogger
-from config import AgentWallConfig
-from tool_node import AgentWallToolNode
+from .config import AgentWallConfig
+from .tool_node import AgentWallToolNode
 from langgraph.graph import MessagesState, StateGraph, START
 from langgraph.prebuilt import tools_condition
 
