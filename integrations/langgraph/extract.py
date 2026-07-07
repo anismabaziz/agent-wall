@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional
 from src.models import Action
 from langgraph.graph import MessagesState
-from config import AgentWallConfig
+from .config import AgentWallConfig
 
 
 # action normalization 

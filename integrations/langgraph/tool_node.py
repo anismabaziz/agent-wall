@@ -2,12 +2,12 @@ from typing import Callable, Sequence, Union, Dict, Any, List, Optional
 from langchain_core.tools import BaseTool
 from langchain_core.messages import ToolMessage
 from langgraph.graph import MessagesState
-from config import AgentWallConfig
+from .config import AgentWallConfig
+from .extract import normalize_tool_call
 from src.engine import PolicyEngine
 from src.obligations import ObligationManager
 from src.audit import AuditLogger
 from src.models import Action, Verdict, Obligation
-from extract import normalize_tool_call
 import logging
 
 
@@ -16,7 +16,14 @@ logger = logging.getLogger(__name__)
 
 class AgentWallToolNode:
 	"""
-	
+	Drop-in replacement for LangGraphs ToolNode with policy enforcement.
+
+	Follows Extract-Evaluate-Apply contract:
+	- Extract: normalize_tool_call() maps raw tool call to an Action tuple
+	- Evaluate: PolicyEngine.evaluate() returns a Verdict
+	- Apply: execute tool (PERMIT), return violation (PROHIBIT/DEFAULT_DENY)
+
+
 	"""
 
 
@@ -36,7 +43,7 @@ class AgentWallToolNode:
 
 
 		self.tools_by_name = {
-			getattr(tool, tool.__name__): tool for tool in tools
+			tool.name: tool for tool in tools
 		}
 
 	def __call__(self, state: MessagesState) -> Dict[str, Any]:
@@ -66,6 +73,7 @@ class AgentWallToolNode:
 			tool_input = call.get("args") or call.get("function", {}).get("arguments", {})
 			tool_call_id = call.get("id", "unknown")
 
+			# extract
 			action = normalize_tool_call(
 				tool_name=tool_name,
 				tool_input=tool_input,
@@ -73,9 +81,11 @@ class AgentWallToolNode:
 				config=self.config
 			)
 
+			# evaluate
 			verdict = self.policy_engine.evaluate(action)
 
 
+			# apply
 			if verdict.decision == "PERMIT":
 				# check if tool is known
 				if tool_name not in self.tools_by_name:
