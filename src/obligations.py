@@ -1,12 +1,10 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-from src.models import Action, Dispensation, ObligationRecord, ObligationStatus
-from src.audit import AuditLogger
 import asyncio
 import threading
+from datetime import datetime, timedelta, timezone
+from typing import Any, Optional
 
-
-
+from src.audit import AuditLogger
+from src.models import Action, Dispensation, ObligationRecord, ObligationStatus
 
 
 class ObligationManager:
@@ -41,7 +39,7 @@ class ObligationManager:
 		subject: str,
 		obliged_action: str,
 		deadline_minutes: int,
-		fulfillment_constraint: dict = None
+		fulfillment_constraint: Optional[dict] = None
 	):
 		"""
 		Called by PolicyEngine when permission with provisions fires.
@@ -208,7 +206,7 @@ class ObligationManager:
 			A dict with outcome summaries:
 			  {"dispensation": list[ObligationRecord], "fulfilled": ObligationRecord|None}"
 		"""
-		outcomes = {"dispensation": [], "fulfilled": None}
+		outcomes: dict[str, Any] = {"dispensation": [], "fulfilled": None}
 
 		with self._lock:
 			for disp in (dispensations or []):

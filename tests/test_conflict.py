@@ -1,6 +1,5 @@
-import pytest
-from src.models import RulePriority
 from src.conflict import ConflictResolver
+from src.models import RulePriority
 
 
 def test_conflict_resolver_direct_priority():

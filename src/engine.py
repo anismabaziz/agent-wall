@@ -1,8 +1,9 @@
-from typing import Optional
 from fnmatch import fnmatchcase
-from src.models import PolicySet, Action, Permission, Prohibition, Verdict
-from src.conflict import ConflictResolver
+from typing import Literal, Optional
+
 from src.audit import AuditLogger
+from src.conflict import ConflictResolver
+from src.models import Action, Permission, PolicySet, Prohibition, Verdict
 
 
 def _to_number(value) -> Optional[float]:
@@ -156,12 +157,12 @@ class PolicyEngine:
 			return [o.id for o in derived_obligations(self.policy_set, [p.id for p in perms])]
 		
 
-		def _log(verdict: Verdict, matched_rules: list = None):
+		def _log(verdict: Verdict, matched_rules: Optional[list] = None):
 			if self.audit_logger:
 				self.audit_logger.log_decision(
 					action=action,
 					verdict=verdict,
-					matched_rule_ids=[r.id for r in matched_rules] or []
+					matched_rule_ids=[r.id for r in (matched_rules or [])]
 				)
 
 			return verdict
@@ -230,6 +231,7 @@ class PolicyEngine:
 
 
 		# nothing matches => honor default_behavior
+		decision: Literal["PERMIT", "PROHIBIT", "DEFAULT_DENY"]
 		if self.policy_set.default_behavior == "explicit_permit_implicit_prohibit":
 			decision, reason = "DEFAULT_DENY", "No matching permission rules found"
 		else:

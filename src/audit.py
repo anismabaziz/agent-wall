@@ -1,30 +1,34 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, Text, Integer
-from src.models import Action, Verdict, ObligationRecord
+from typing import Optional
+
+from sqlalchemy.orm import Mapped, mapped_column
+
 from src.db import Base, Session
+from src.models import Action, ObligationRecord, Verdict
+
 
 class AuditEntry(Base):
 	__tablename__ = "audit_log"
 
-	id = Column(Integer, primary_key=True, autoincrement=True)
-	timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+	id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+	timestamp: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 
 	# what happened
-	action_subject = Column(String, nullable=False)
-	action_type = Column(String, nullable=False)
-	action_resource = Column(String)
+	action_subject: Mapped[str]
+	action_type: Mapped[str]
+	action_resource: Mapped[Optional[str]]
 
 	# the decision
-	verdict = Column(String, nullable=False)
-	explanation = Column(String, nullable=False)
-	matched_rule_ids = Column(String)
+	verdict: Mapped[str]
+	explanation: Mapped[str]
+	matched_rule_ids: Mapped[Optional[str]]
 
 	# obligation lifecycle events
-	obligation_id = Column(String)
-	obligation_status_change = Column(String)
+	obligation_id: Mapped[Optional[str]]
+	obligation_status_change: Mapped[Optional[str]]
 
 	# policy version
-	policy_file = Column(String, nullable=False)
+	policy_file: Mapped[str]
 
 
 class AuditLogger:
@@ -37,8 +41,8 @@ class AuditLogger:
 			self, 
 			action: Action, 
 			verdict: Verdict, 
-			matched_rule_ids: list[str] = None,
-			obligation_change: tuple[str, str] = None # (obl_id, status)
+			matched_rule_ids: Optional[list[str]] = None,
+			obligation_change: Optional[tuple[str, str]] = None # (obl_id, status)
 			):
 		
 		with Session() as session:
@@ -60,7 +64,7 @@ class AuditLogger:
 			return entry.id
 		
 
-	def log_obligation(self, obligation_record: ObligationRecord, event: str, action: Action = None):
+	def log_obligation(self, obligation_record: ObligationRecord, event: str, action: Optional[Action] = None):
 
 		with Session() as session:
 			entry = AuditEntry(

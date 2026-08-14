@@ -1,8 +1,10 @@
-import pytest
-from src.models import Action, load_policy, PolicySet, Permission, Prohibition
-from src.engine import PolicyEngine
-from src.obligations import ObligationManager
 from unittest.mock import patch
+
+import pytest
+
+from src.engine import PolicyEngine
+from src.models import Action, Permission, PolicySet, Prohibition, load_policy
+from src.obligations import ObligationManager
 
 
 @pytest.fixture
