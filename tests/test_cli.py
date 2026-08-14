@@ -44,8 +44,8 @@ def test_evaluate_permit_returns_verdict(capsys):
 		"--subject", "pay_agent_1",
 		"--action", "execute_payment",
 		"--resource", "tx://hvc",
-		"--context", "is_high_value=true",
-		"--context", "has_treasury_approval=true",
+		"--context", "_resource_types=CrossBorderTransfer",
+		"--context", "_credential_issuer=TreasuryAuthority",
 	])
 	assert code == 0
 	data = json.loads(capsys.readouterr().out)
@@ -59,7 +59,7 @@ def test_evaluate_prohibit(capsys):
 		"--policy", POLICY,
 		"--subject", "pay_agent_1",
 		"--action", "execute_payment",
-		"--context", "is_high_value=true",
+		"--context", "_resource_types=CrossBorderTransfer",
 	])
 	assert code == 0
 	data = json.loads(capsys.readouterr().out)
@@ -73,8 +73,8 @@ def test_obligations_lists_persisted_record(capsys):
 		"--subject", "pay_agent_1",
 		"--action", "execute_payment",
 		"--resource", "tx://hvc",
-		"--context", "is_high_value=true",
-		"--context", "has_treasury_approval=true",
+		"--context", "_resource_types=CrossBorderTransfer",
+		"--context", "_credential_issuer=TreasuryAuthority",
 	])
 	capsys.readouterr()
 
@@ -92,8 +92,8 @@ def test_audit_log_after_evaluate(capsys):
 		"--policy", POLICY,
 		"--subject", "pay_agent_1",
 		"--action", "execute_payment",
-		"--context", "is_high_value=true",
-		"--context", "has_treasury_approval=true",
+		"--context", "_resource_types=CrossBorderTransfer",
+		"--context", "_credential_issuer=TreasuryAuthority",
 	])
 	capsys.readouterr()
 
