@@ -14,8 +14,7 @@ Closes #<!-- issue number(s) -->
 
 ## Checklist
 
-- [ ] Branch is the `phase/N` branch for this work (e.g. `phase/0`)
-- [ ] `phase:N` label matches the branch / roadmap phase
+- [ ] Commits are directly on `main` (one logical change per commit)
 - [ ] Tests pass locally: `uv run python -m pytest -q`
 - [ ] New behavior is covered by tests (if code changed)
 - [ ] No secrets (`.env`) or mutable state (`*.db`) committed
