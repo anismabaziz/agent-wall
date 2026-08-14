@@ -2,7 +2,7 @@
 
 <!-- What does this PR do? One or two sentences. -->
 
-Closes #<!-- issue number -->
+Closes #<!-- issue number(s) -->
 
 ## Type of change
 
@@ -14,8 +14,8 @@ Closes #<!-- issue number -->
 
 ## Checklist
 
-- [ ] Branch name follows `phase<N>/#<num>-<slug>` convention
-- [ ] `phase:N` label matches the roadmap phase of the issue
+- [ ] Branch is the `phase/N` branch for this work (e.g. `phase/0`)
+- [ ] `phase:N` label matches the branch / roadmap phase
 - [ ] Tests pass locally: `uv run python -m pytest -q`
 - [ ] New behavior is covered by tests (if code changed)
 - [ ] No secrets (`.env`) or mutable state (`*.db`) committed

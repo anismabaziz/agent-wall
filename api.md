@@ -1,6 +1,6 @@
 # Terminal 1: Start server
 
-uvicorn agent_wall.api:app --reload
+uv run python -m uvicorn src.api:app --reload
 
 # Terminal 2: Test flagship scenario
 

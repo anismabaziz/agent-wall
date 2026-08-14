@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import os
+from pathlib import Path
 from sqlalchemy import create_engine, Column, String, DateTime, Text, Integer
 from sqlalchemy.orm import declarative_base, sessionmaker
 from src.models import Action, Verdict, ObligationRecord
@@ -30,7 +32,14 @@ class AuditEntry(Base):
 
 
 # setup
-_engine = create_engine("sqlite:///agent_wall_audit.db", echo=False)
+# Configurable audit DB path. Override with the AGENT_WALL_AUDIT_DB env var;
+# otherwise default to <repo root>/agent_wall_audit.db regardless of CWD.
+_db_path = os.environ.get("AGENT_WALL_AUDIT_DB", "agent_wall_audit.db")
+
+if not os.path.isabs(_db_path):
+	_db_path = str(Path(__file__).resolve().parent.parent / _db_path)
+
+_engine = create_engine(f"sqlite:///{_db_path}", echo=False)
 Base.metadata.create_all(_engine)
 Session = sessionmaker(bind=_engine)
 
