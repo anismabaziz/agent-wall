@@ -95,7 +95,8 @@ class PolicyEngine:
 			verdict = Verdict(
 				decision="PERMIT",
 				explanation= "Permitted by rules: " + ", ".join(p.id for p in matched_permissions),
-				obligations=_obligations_from(matched_permissions)
+				obligations=_obligations_from(matched_permissions),
+				permission_ids=[p.id for p in matched_permissions]
 			)
 			return _log(verdict, matched_permissions)
 		
@@ -125,7 +126,8 @@ class PolicyEngine:
 					verdict = Verdict(
 						decision="PERMIT",
 						explanation=f"Resolved by RulePriority {priority_id}: {winning_id} outranks conflicting prohibition(s)",
-						obligations=_obligations_from([winning_perm])
+						obligations=_obligations_from([winning_perm]),
+						permission_ids=[winning_id]
 					)
 					return _log(verdict, matched_permissions + matched_prohibitions)
 				
@@ -148,13 +150,59 @@ class PolicyEngine:
 			return _log(verdict, matched_permissions + matched_prohibitions)
 
 
-		# nothing matches => DEFAULT_DENY
+		# nothing matches => honor default_behavior
+		if self.policy_set.default_behavior == "explicit_permit_implicit_prohibit":
+			decision, reason = "DEFAULT_DENY", "No matching permission rules found"
+		else:
+			match self.policy_set.default_decision:
+				case "PERMIT":
+					decision, reason = "PERMIT", "No explicit rule; default permits"
+				case "PROHIBIT":
+					decision, reason = "PROHIBIT", "No explicit rule; default prohibits"
+				case _:
+					decision, reason = "DEFAULT_DENY", "No matching rule; default deny"
+
 		verdict = Verdict(
-			decision="DEFAULT_DENY",
-			explanation="No matching permission rules found",
+			decision=decision,
+			explanation=reason,
 			obligations=[]
 		)
 		return _log(verdict, matched_permissions + matched_prohibitions)
+
+
+	def register_obligations(self, obligation_manager, verdict: Verdict, subject: str) -> list:
+		"""
+		Central registration of obligations produced by a verdict.
+
+		Looks up each obligation template from the policy set and registers a
+		runtime record via the obligation manager, attributing it to the permission
+		that provisions it (falling back to "unknown").
+		"""
+		if verdict.decision != "PERMIT" or not verdict.obligations:
+			return []
+
+		provision_owner: dict[str, str] = {}
+		for permission in self.policy_set.permissions:
+			for obl in permission.provisions or []:
+				provision_owner.setdefault(obl, permission.id)
+
+		records = []
+		for obl_id in verdict.obligations:
+			obligation = next((o for o in self.policy_set.obligations if o.id == obl_id), None)
+			if obligation is None:
+				continue
+
+			records.append(
+				obligation_manager.register(
+					obligation_id=obl_id,
+					permission_id=provision_owner.get(obl_id, "unknown"),
+					subject=subject,
+					obliged_action=obligation.obliged_action,
+					deadline_minutes=obligation.deadline_minutes,
+				)
+			)
+
+		return records
 
 
 

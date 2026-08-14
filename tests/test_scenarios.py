@@ -35,18 +35,13 @@ def test_scenarios(scenario_path):
 
 		# register obligations from permitted actions
 		if last_verdict.decision == "PERMIT" and last_verdict.obligations:
-			for obl_id in last_verdict.obligations:
-				obligation = next((o for o in policy.obligations if o.id == obl_id), None)
-
-				if obligation:
-					record = manager.register(
-						obligation_id=obl_id,
-						permission_id="unknown",
-						subject=action.subject,
-						obliged_action=obligation.obliged_action,
-						deadline_minutes=obligation.deadline_minutes
-					)
-					created_records.append(record)
+			created_records.extend(
+				engine.register_obligations(
+					manager,
+					verdict=last_verdict,
+					subject=action.subject,
+				)
+			)
 
 		# check if this action fulfills any obligation
 		manager.check_fulfillment(action)
