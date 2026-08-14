@@ -128,6 +128,11 @@ app = build_agent_wall_agent(
 
 See `integrations/langgraph/demo.py` for a runnable financial-services demo (requires a `GROQ_API_KEY`).
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for branch naming, commit message
+style (one sentence), and how to work on an issue.
+
 ## Project layout
 
 ```
