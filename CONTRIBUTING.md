@@ -3,22 +3,22 @@
 ## Branch naming convention
 
 Trunk is **`main`** and stays green at all times. Work happens on **one branch
-per roadmap phase**:
+per feature**:
 
 ```
-phase/0   phase/1   phase/2   phase/3   phase/4   phase/5
+feature/<feature-id>
 ```
 
-Each phase branch holds all the work for its associated issues (the `phase:N`
-labels link issues to branches). Start a phase by switching to its branch:
+Each feature branch holds all the work for its associated issues (the `feature:N`
+labels link issues to branches). Start a feature by switching to its branch:
 
 ```bash
 git fetch origin
-git checkout phase/N && git pull
+git checkout feature/<feature-id> && git pull
 ```
 
-All six phase branches already exist on the remote, branched from `main`. A
-phase branch merges into `main` once every issue in that phase is done.
+Feature branches are branched from `main`. A feature branch merges into `main`
+once every issue in that feature is done.
 
 ## Commit messages — one sentence
 
@@ -37,25 +37,24 @@ Never commit secrets (`.env`) or the mutable DB (`agent_wall_audit.db`).
 
 ## How to continue / work on an issue
 
-1. Pick an open issue, preferably one with an early `phase:` label
-   (`phase:0` → `phase:5`).
-2. Check out that phase's branch and implement the fix on it (see above).
+1. Pick an open issue, preferably one with an early `feature:` label.
+2. Check out that feature's branch and implement the fix on it (see above).
 3. Run the checks locally before pushing:
 
    ```bash
    uv run python -m pytest -q
    ```
 
-4. Push and open a PR when the phase's work is ready:
+4. Push and open a PR when the feature's work is ready:
 
    ```bash
-   git push -u origin phase/N
+   git push -u origin feature/<feature-id>
    gh pr create --fill            # uses .github/PULL_REQUEST_TEMPLATE.md
    ```
 
 5. Link and label the PR: add `Closes #<num>` to the body and the matching
-   `phase:N` label. Ensure CI passes.
-6. Squash-merge to `main` and delete the phase branch:
+   `feature:N` label. Ensure CI passes.
+6. Squash-merge to `main` and delete the feature branch:
 
    ```bash
    gh pr merge --squash --delete-branch
@@ -66,7 +65,8 @@ before merge.
 
 ## Resources
 
-- **Phase runbook** (the end-to-end process we use for every phase): [`docs/phase-runbook.md`](docs/phase-runbook.md)
+- **Feature runbook** (the end-to-end process for shipping a feature branch):
+  [`docs/phase-runbook.md`](docs/phase-runbook.md)
 - Developer guide (issues, roadmap): [`dev-guide/`](dev-guide/) *(local only)*
 - Full workflow details: [`dev-guide/workflow.md`](dev-guide/workflow.md)
 - Issue tracker: https://github.com/anismabaziz/agent-wall/issues
