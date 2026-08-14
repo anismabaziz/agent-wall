@@ -11,12 +11,27 @@ import threading
 
 class ObligationManager:
 
-	def __init__(self, poll_interval_seconds: int = 5, audit_logger: Optional[AuditLogger] = None):
+	def __init__(self, poll_interval_seconds: int = 5, audit_logger: Optional[AuditLogger] = None, store=None):
 		self._obligations: dict[str, ObligationRecord] = {}
 		self._poll_interval = poll_interval_seconds
 		self._poll_task: Optional[asyncio.Task] = None
 		self.audit_logger = audit_logger
+		self.store = store
 		self._lock = threading.RLock()
+
+
+	def load(self) -> None:
+		"""
+		Load persisted obligations from the store into memory (e.g. on startup).
+		Only obligations that are still open (PENDING/WAIVED/FULFILLED) are kept;
+		VIOLATED records are kept too so history is available in memory.
+		"""
+		if not self.store:
+			return
+
+		with self._lock:
+			for record in self.store.load_all():
+				self._obligations[record.id] = record
 
 
 	def register(
@@ -46,6 +61,9 @@ class ObligationManager:
 		with self._lock:
 			self._obligations[record.id] = record
 
+		if self.store:
+			self.store.save(record)
+
 		if self.audit_logger:
 			self.audit_logger.log_obligation(record, "CREATED")
 
@@ -73,6 +91,9 @@ class ObligationManager:
 						record.status = ObligationStatus.FULFILLED
 						record.fulfilled_at = datetime.now(timezone.utc)
 
+						if self.store:
+							self.store.save(record)
+
 						if self.audit_logger:
 							self.audit_logger.log_obligation(record, "FULFILLED", action)
 						return record
@@ -93,6 +114,9 @@ class ObligationManager:
 				if record.status == ObligationStatus.PENDING and now > record.deadline:
 					record.status = ObligationStatus.VIOLATED
 					record.violated_at = now
+
+					if self.store:
+						self.store.save(record)
 
 					if self.audit_logger:
 						self.audit_logger.log_obligation(record, "VIOLATED")
@@ -152,6 +176,9 @@ class ObligationManager:
 							record.status = ObligationStatus.WAIVED
 							record.waived_at = datetime.now(timezone.utc)
 							record.waived_by = disp.id
+
+							if self.store:
+								self.store.save(record)
 
 							if self.audit_logger:
 								self.audit_logger.log_obligation(record, "WAIVED")
