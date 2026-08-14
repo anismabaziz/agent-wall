@@ -16,7 +16,10 @@ def derived_obligations(
 	policy: PolicySet,
 	permission_ids: Iterable[str],
 ) -> list[Obligation]:
-	"""Return the unique obligation templates derived from the given permission ids."""
+	"""
+	Return the unique obligation templates derived from the given permission
+	ids: every obligation provisioned by a passed permission, deduplicated.
+"""
 	allowed = set(permission_ids)
 
 	provision_ids: set[str] = set()
@@ -29,5 +32,8 @@ def derived_obligations(
 
 
 def deriving_permissions(policy: PolicySet, obligation_id: str) -> list[Permission]:
-	"""Return the permissions that provision a given obligation (provenance)."""
+	"""
+	Return the permissions that provision a given obligation, i.e. its
+	provenance chain.
+"""
 	return [p for p in policy.permissions if obligation_id in (p.provisions or [])]

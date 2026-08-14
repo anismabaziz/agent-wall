@@ -8,6 +8,10 @@ from src.models import Action, ObligationRecord, Verdict
 
 
 class AuditEntry(Base):
+	"""
+	Represents a single row in the audit log: everything that was requested,
+	decided, and any obligation lifecycle event that accompanied it.
+"""
 	__tablename__ = "audit_log"
 
 	id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -33,7 +37,16 @@ class AuditEntry(Base):
 
 class AuditLogger:
 
+	"""
+	Persists decision and obligation events to the SQLite audit store and
+	offers a queryable view over them.
+"""
+
 	def __init__(self, policy_file: str = "unknown"):
+		"""
+		Create a logger bound to a specific policy file, so every entry it
+		writes records which policy version produced the decision.
+"""
 		self.policy_file = policy_file
 
 
@@ -44,7 +57,10 @@ class AuditLogger:
 			matched_rule_ids: Optional[list[str]] = None,
 			obligation_change: Optional[tuple[str, str]] = None # (obl_id, status)
 			):
-		
+		"""
+		Record an authorization decision (and any resulting obligation status
+		change) as a new row in the audit log, returning its id.
+"""
 		with Session() as session:
 			entry = AuditEntry(
 				action_subject=action.subject,
@@ -66,6 +82,11 @@ class AuditLogger:
 
 	def log_obligation(self, obligation_record: ObligationRecord, event: str, action: Optional[Action] = None):
 
+		"""
+		Append an obligation lifecycle event (e.g. registered, fulfilled,
+		violated) to the audit log, associating it with the record and the
+		action that triggered it when available.
+"""
 		with Session() as session:
 			entry = AuditEntry(
 				action_subject=action.subject if action else obligation_record.subject,
@@ -85,6 +106,10 @@ class AuditLogger:
 
 	def query(self, limit: int = 100, offset: int = 0):
 
+		"""
+		Fetch audit entries ordered newest-first, as a list of plain dicts,
+		supporting pagination via limit and offset.
+"""
 		with Session() as session:
 
 			entries = session.query(AuditEntry)\

@@ -22,6 +22,10 @@ from src.obligations import ObligationManager
 
 
 def _parse_value(raw: str):
+	"""
+	Coerce a raw CLI string into a boolean, int, or float when possible,
+	falling back to the original string.
+"""
 	raw = raw.strip()
 	lower = raw.lower()
 	if lower in ("true", "false"):
@@ -38,6 +42,10 @@ def _parse_value(raw: str):
 
 
 def _parse_context(items: list[str]) -> dict:
+	"""
+	Parse a list of KEY=VALUE strings into a context dict, raising an
+	argument error for malformed entries.
+"""
 	context = {}
 	for item in items:
 		if "=" not in item:
@@ -48,6 +56,11 @@ def _parse_context(items: list[str]) -> dict:
 
 
 class EngineContext(TypedDict):
+	"""
+	Typed context bundling the policy, audit logger, engine, and obligation
+	manager together for use by the CLI commands.
+"""
+
 	policy: PolicySet
 	audit_logger: AuditLogger
 	engine: PolicyEngine
@@ -55,6 +68,10 @@ class EngineContext(TypedDict):
 
 
 def _build_engine(policy_file: str) -> EngineContext:
+	"""
+	Initialize the database and build a fully wired engine context from the
+	policy file, including audit logger and obligation manager.
+"""
 	init_db()
 	policy = load_policy(policy_file)
 	audit_logger = AuditLogger(policy_file=policy_file)
@@ -69,10 +86,17 @@ def _build_engine(policy_file: str) -> EngineContext:
 
 
 def _print_dict(data: dict) -> None:
+	"""
+	Print a dict as pretty-printed JSON with a default str converter.
+"""
 	print(json.dumps(data, indent=2, default=str))
 
 
 def cmd_evaluate(args) -> int:
+	"""
+	Evaluate an action against a policy, register any resulting obligations,
+	enforce deterministic ordering, and print the verdict.
+"""
 	ctx = _build_engine(args.policy)
 	try:
 		context = _parse_context(args.context)
@@ -104,6 +128,10 @@ def cmd_evaluate(args) -> int:
 
 
 def cmd_obligations(args) -> int:
+	"""
+	List obligations from the store, optionally filtered by status and
+	paginated by limit/offset, printed as JSON.
+"""
 	init_db()
 	manager = ObligationManager(
 		poll_interval_seconds=5,
@@ -136,6 +164,9 @@ def cmd_obligations(args) -> int:
 
 
 def cmd_audit_log(args) -> int:
+	"""
+	Query and print the audit log entries within the given limit and offset.
+"""
 	init_db()
 	logger = AuditLogger()
 	rows = logger.query(limit=args.limit, offset=args.offset)
@@ -144,6 +175,10 @@ def cmd_audit_log(args) -> int:
 
 
 def cmd_check(args) -> int:
+	"""
+	Validate that the policy file loads, printing an OK summary of counts or
+	an INVALID error if it does not.
+"""
 	try:
 		policy = load_policy(args.policy)
 	except Exception as e:  # noqa: BLE001 - CLI reports any validation failure
@@ -162,6 +197,10 @@ def cmd_check(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+	"""
+	Build and return an ArgumentParser with evaluate, obligations, audit-log,
+	and check subcommands. Each subparser sets a func callback.
+"""
 	parser = argparse.ArgumentParser(prog="agentwall", description="Deontic Policy Firewall CLI")
 	sub = parser.add_subparsers(dest="command", required=True)
 
@@ -193,6 +232,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+	"""
+	Entry point that builds the parser, parses arguments, and dispatches to
+	the selected subcommand, returning its exit code.
+"""
 	parser = build_parser()
 	args = parser.parse_args(argv)
 	return args.func(args)

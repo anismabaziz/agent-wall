@@ -23,7 +23,7 @@ def build_agent_wall_agent(
 ):
 	"""
 	Build a complete langGraph agent with AgentWall policy enforcement.
-	
+
 	this is a convenience function that wires up the standard ReAct pattern with AgentWall policy enforcement
 	at the tool boundary
 
@@ -38,8 +38,7 @@ def build_agent_wall_agent(
 
 	Returns:
 		Compiled LangGraph StateGraph
-	"""
-
+"""
 	agent_wall_tools = AgentWallToolNode(
 		tools=tools,
 		policy_engine=policy_engine,
@@ -51,6 +50,9 @@ def build_agent_wall_agent(
 	graph = StateGraph(MessagesState)
 
 	def agent_node(state: MessagesState) -> Dict[str, Any]:
+		"""
+		Invoke the LLM with the current messages and return the generated response.
+"""
 		response = llm.invoke(state["messages"])
 		return {"messages": [response]}
 	
@@ -62,7 +64,3 @@ def build_agent_wall_agent(
 	graph.add_edge("tools", "agent")
 
 	return graph.compile(checkpointer=checkpointer)
-
-
-
-

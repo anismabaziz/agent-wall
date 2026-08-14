@@ -2,7 +2,9 @@ from typing import Any, Callable, TypedDict
 
 
 class AgentWallConfig(TypedDict, total=False):
-    """Configuration for the AgentWall-LangGraph integration."""
+    """
+    Configuration for the AgentWall-LangGraph integration.
+"""
 
     policy_file: str
     audit_db_path: str

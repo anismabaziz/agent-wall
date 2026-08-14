@@ -36,7 +36,9 @@ _limiter = SlidingWindowRateLimiter(limit=RATE_LIMIT, window_seconds=60)
 
 
 def require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
-	"""Reject unauthenticated requests when an API key is configured."""
+	"""
+	Reject unauthenticated requests when an API key is configured.
+"""
 	if not API_KEY:
 		return
 	if x_api_key != API_KEY:
@@ -44,6 +46,9 @@ def require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
 
 
 def _check_rate_limit(subject: str) -> None:
+	"""
+	Raise a 429 error if the subject exceeds the configured rate limit.
+"""
 	if RATE_LIMIT > 0 and not _limiter.allow(subject):
 		raise HTTPException(status_code=429, detail="Rate limit exceeded for subject")
 
@@ -51,6 +56,9 @@ def _check_rate_limit(subject: str) -> None:
 # start polling on startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+	"""
+	Start and stop background ObligationManager polling on app startup and shutdown.
+"""
 	init_db()
 	obligation_manager.load()
 	obligation_manager.start()
@@ -74,6 +82,9 @@ app.add_middleware(
 
 
 class EvaluateRequest(BaseModel):
+	"""
+	Request payload for the /evaluate endpoint.
+"""
 	subject: str
 	action_type: str
 	resource: str
@@ -81,6 +92,9 @@ class EvaluateRequest(BaseModel):
 
 
 class EvaluateResponse(BaseModel):
+	"""
+	Response payload returned by the /evaluate endpoint.
+"""
 	decision: str
 	explanation: str
 	obligations: List[str] = []
@@ -89,6 +103,9 @@ class EvaluateResponse(BaseModel):
 
 @app.post("/evaluate", response_model=EvaluateResponse, dependencies=[Depends(require_api_key)])
 async def evaluate(request: EvaluateRequest):
+	"""
+	Evaluate a single action against the policy and return the decision.
+"""
 	action = Action(
 		subject=request.subject,
 		action_type=request.action_type,
@@ -125,6 +142,9 @@ async def list_obligations(
 	limit: int = Query(100, ge=1, le=1000),
 	offset: int = Query(0, ge=0),
 ):
+	"""
+	List tracked obligations, optionally filtered by status and paginated.
+"""
 	status_enum = ObligationStatus(status) if status else None
 	records = obligation_manager.get_obligations(status=status_enum)[offset:offset + limit]
 
@@ -149,5 +169,7 @@ async def list_obligations(
 
 @app.get("/audit-log", dependencies=[Depends(require_api_key)])
 async def get_audit_log(limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0)):
+	"""
+	Return recent audit log entries within the given offset and limit.
+"""
 	return audit_logger.query(limit, offset)
-

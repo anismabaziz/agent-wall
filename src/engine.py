@@ -7,7 +7,9 @@ from src.models import Action, Permission, PolicySet, Prohibition, Verdict
 
 
 def _to_number(value) -> Optional[float]:
-	"""Best-effort numeric coercion for range operators. Returns None if not numeric."""
+	"""
+	Best-effort numeric coercion for range operators. Returns None if not numeric.
+"""
 	if isinstance(value, bool):
 		return None
 	try:
@@ -17,10 +19,17 @@ def _to_number(value) -> Optional[float]:
 
 
 def _wildcard_match(pattern: str, actual) -> bool:
+	"""
+	Match an actual value against a glob pattern, treating both as strings.
+"""
 	return fnmatchcase(str(actual), pattern)
 
 
 def _contains(container, operand) -> bool:
+	"""
+	Check whether the container holds the operand, either as a single value
+	or, when the operand is a list, as all of its items.
+"""
 	if isinstance(operand, list):
 		return all(item in container for item in operand)
 	return operand in container
@@ -36,7 +45,7 @@ def operator_match(actual, expected) -> bool:
 	  - operator dict       -> {"gt": N} {"lt": N} {"gte": N} {"lte": N}
 	                          {"neq": V} {"in": [...]} {"contains": [...]}
 	                          {"wildcard": "..."}
-	"""
+"""
 	if isinstance(expected, dict) and _is_operator_dict(expected):
 		return _operator_dict_match(actual, expected)
 
@@ -47,11 +56,18 @@ def operator_match(actual, expected) -> bool:
 
 
 def _is_operator_dict(value: dict) -> bool:
+	"""
+	Return True when the dict contains only recognised comparison operators.
+"""
 	operators = {"gt", "lt", "gte", "lte", "neq", "in", "contains", "wildcard"}
 	return bool(value) and all(k in operators for k in value)
 
 
 def _operator_dict_match(actual, expected: dict) -> bool:
+	"""
+	Evaluate every operator in a comparison-operator dict against the actual
+	value, returning True only when all of them hold.
+"""
 	for op, operand in expected.items():
 		if op in ("gt", "lt", "gte", "lte"):
 			a = _to_number(actual)
@@ -82,14 +98,25 @@ def _operator_dict_match(actual, expected: dict) -> bool:
 
 
 class PolicyEngine:
+	"""
+	Core engine that evaluates an action against a policy set, applying
+	conflict resolution and producing a verdict.
+"""
 
 	def __init__(self, policy_set: PolicySet, audit_logger: Optional[AuditLogger] = None):
+		"""
+		Store the policy set, build a conflict resolver from its rule
+		priorities, and hold the optional audit logger.
+"""
 		self.policy_set = policy_set
 		self.conflict_resolver = ConflictResolver(policy_set.rule_priorities)
 		self.audit_logger = audit_logger
 
 	def _matches(self, action: Action, rule: Permission | Prohibition) -> bool:
-
+		"""
+		Return True when the rule's action type and every constraint match the
+		given action.
+"""
 		if rule.action != action.action_type:
 			return False
 		
@@ -105,7 +132,9 @@ class PolicyEngine:
 	
 
 	def _constraint_value(self, action: Action, key: str):
-		"""Resolve a constraint key to an action value, honouring subject/resource scoping."""
+		"""
+		Resolve a constraint key to an action value, honouring subject/resource scoping.
+"""
 		if key == "subject":
 			return action.subject
 		if key == "resource":
@@ -114,6 +143,10 @@ class PolicyEngine:
 	
 
 	def evaluate(self, action: Action) -> Verdict:
+		"""
+		Public entry point that evaluates the action and returns a verdict,
+		converting any unexpected internal error into a default-deny verdict.
+"""
 		try:
 			return self._evaluate(action)
 		except Exception as e:
@@ -134,7 +167,10 @@ class PolicyEngine:
 
 
 	def _evaluate(self, action: Action) -> Verdict:
-		
+		"""
+		Match the action against all permissions and prohibitions, then apply
+		conflict resolution or the default behaviour to produce a verdict.
+"""
 		matched_permissions = []
 		matched_prohibitions = []
 
@@ -152,12 +188,18 @@ class PolicyEngine:
 
 
 		def _obligations_from(perms: list[Permission]) -> list[str]:
+			"""
+			Collect the IDs of the obligations derived from the matched permissions.
+"""
 			# central dedup of shared/provisioned obligations (issue #6)
 			from src.derivations import derived_obligations
 			return [o.id for o in derived_obligations(self.policy_set, [p.id for p in perms])]
 		
 
 		def _log(verdict: Verdict, matched_rules: Optional[list] = None):
+			"""
+			Audit the given verdict with the matched rules and return it.
+"""
 			if self.audit_logger:
 				self.audit_logger.log_decision(
 					action=action,
@@ -258,7 +300,7 @@ class PolicyEngine:
 		Looks up each obligation template from the policy set and registers a
 		runtime record via the obligation manager, attributing it to the permission
 		that provisions it (falling back to "unknown").
-		"""
+"""
 		if verdict.decision != "PERMIT" or not verdict.obligations:
 			return []
 
@@ -284,6 +326,3 @@ class PolicyEngine:
 			)
 
 		return records
-
-
-

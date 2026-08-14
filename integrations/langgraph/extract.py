@@ -15,10 +15,9 @@ def normalize_tool_call(
 	agent_id: Optional[str] = None
 ) -> Action:
 	"""
-	Extract normalized AgentWall Action from LangGraph tool call
-
-	this is the extract step from the Extract-Evaluate-Apply contract
-	it maps that raw tool call to a normalized tuple that the PolicyEngine consumes
+	Extract a normalized AgentWall Action from a raw LangGraph tool call.
+	This is the extract step of the Extract-Evaluate-Apply contract: it maps
+	the raw tool call to the tuple the PolicyEngine consumes.
 
 	Args:
 		tool_name: The name of the tool being invoked
@@ -29,7 +28,7 @@ def normalize_tool_call(
 
 	Returns:
 		Normalized Action tuple for policy Evaluation
-	"""
+"""
 	
 	subject = agent_id or config.get("default_subject", "unknown_agent")
 
@@ -64,7 +63,7 @@ def _extract_resource(
 ) -> str:
 	"""
 	Heuristic extraction of resource identifier from tool arguments.
-	"""
+"""
 	
 	resource_fields = [
         "resource", "path", "file_path", "url", "endpoint",
@@ -79,4 +78,3 @@ def _extract_resource(
 	import hashlib
 	input_hash = hashlib.sha256(str(sorted(tool_input.items())).encode()).hexdigest()[:8]
 	return f"{tool_name}://{input_hash}"
-
