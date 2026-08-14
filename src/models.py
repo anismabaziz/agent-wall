@@ -83,6 +83,11 @@ class ObligationRecord(BaseModel):
 
 
 def load_policy(path: str | Path) -> PolicySet:
+	path = Path(path)
+
+	if not path.is_absolute():
+		# resolve relative to the repo root so callers work from any CWD
+		path = Path(__file__).resolve().parent.parent / path
 
 	with open(path, "r", encoding="utf-8") as f:
 		data = yaml.safe_load(f)

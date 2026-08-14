@@ -128,6 +128,15 @@ app = build_agent_wall_agent(
 
 See `integrations/langgraph/demo.py` for a runnable financial-services demo (requires a `GROQ_API_KEY`).
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for branch naming, commit message
+style (one sentence), and how to work on an issue.
+
+Want the exact end-to-end process we use to ship each roadmap phase (branch →
+commit → verify → PR tagging its issues → merge)? See
+[`docs/phase-runbook.md`](docs/phase-runbook.md).
+
 ## Project layout
 
 ```

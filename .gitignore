@@ -16,3 +16,6 @@ wheels/
 # Mutable/local state
 *.db
 agent_wall_audit.db
+
+# Local developer notes (not shared)
+dev-guide/
