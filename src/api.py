@@ -70,12 +70,8 @@ async def evaluate(request: EvaluateRequest):
 			subject=request.subject,
 		)
 	
-	# check dispensation
-	if policy.dispensations:
-		obligation_manager.check_dispensation(action, policy.dispensations)
-
-	# check fulfillment
-	obligation_manager.check_fulfillment(action)
+	# deterministic ordering: dispensation -> fulfillment -> deadline (issue #16)
+	obligation_manager.enforce(action, policy.dispensations, check_deadline=True)
 
 	return EvaluateResponse(
 		decision=verdict.decision,
