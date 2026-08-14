@@ -301,3 +301,31 @@ def test_fulfillment_matches_correct_obligation():
 
 	fulfilled = manager.get_obligations(ObligationStatus.FULFILLED)
 	assert len(fulfilled) == 1
+
+
+def test_fulfillment_requires_matching_constraint():
+	"""
+	An action can only fulfill an obligation if its context satisfies the
+	obligation's fulfillment_constraint.
+	"""
+	manager = ObligationManager()
+
+	manager.register(
+		obligation_id="Ob_FileCTR",
+		permission_id="Perm_ApprovedHighValue",
+		subject="agent_1",
+		obliged_action="file_ctr",
+		deadline_minutes=60,
+		fulfillment_constraint={"requires_note": True},
+	)
+
+	missing = manager.check_fulfillment(
+		Action(subject="agent_1", action_type="file_ctr", resource="ctr/1", context={})
+	)
+	assert missing is None
+
+	matching = manager.check_fulfillment(
+		Action(subject="agent_1", action_type="file_ctr", resource="ctr/1", context={"requires_note": True})
+	)
+	assert matching is not None
+	assert matching.status == ObligationStatus.FULFILLED

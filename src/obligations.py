@@ -62,6 +62,10 @@ class ObligationManager:
 
 			if action.action_type == record.obliged_action:
 				if action.subject == record.subject:
+					# the fulfilling action must satisfy the obligation's constraints
+					if not self._constraint_match(action.context, record.fulfillment_constraint):
+						continue
+
 					record.status = ObligationStatus.FULFILLED
 					record.fulfilled_at = datetime.now(timezone.utc)
 
