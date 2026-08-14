@@ -1,9 +1,27 @@
 [project]
 name = "agent-wall"
 version = "0.1.0"
-description = "Add your description here"
+description = "Deontic policy firewall for agentic AI: declarative YAML guardrails with allow/deny/obligate decisions."
 readme = "README.md"
 requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "AgentWall contributors" },
+]
+keywords = [
+    "ai-agent",
+    "policy",
+    "guardrails",
+    "deontic",
+    "compliance",
+    "langgraph",
+    "fastapi",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+]
 dependencies = [
     "fastapi>=0.139.0",
     "freezegun>=1.5.5",
@@ -16,6 +34,17 @@ dependencies = [
     "sqlalchemy>=2.0.51",
     "uvicorn>=0.49.0",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.11.0",
+    "pre-commit>=3.8.0",
+    "ruff>=0.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/anismabaziz/agent-wall"
+Repository = "https://github.com/anismabaziz/agent-wall"
 
 [project.scripts]
 agentwall = "src.cli:main"
@@ -31,3 +60,19 @@ packages = ["src", "integrations", "integrations.langgraph"]
 testpaths = ["tests"]
 pythonpath = ["."]
 
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+exclude = ["docs", ".venv"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+indent-style = "tab"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+exclude = ["docs", "tests"]

@@ -11,14 +11,14 @@ console script (see [project.scripts] in pyproject.toml).
 """
 import argparse
 import json
-from typing import Optional
+from typing import Optional, TypedDict
 
-from src.models import Action, ObligationStatus, load_policy
 from src.audit import AuditLogger
-from src.engine import PolicyEngine
-from src.obligations import ObligationManager
-from src.obligation_store import ObligationStore
 from src.db import init_db
+from src.engine import PolicyEngine
+from src.models import Action, ObligationStatus, PolicySet, load_policy
+from src.obligation_store import ObligationStore
+from src.obligations import ObligationManager
 
 
 def _parse_value(raw: str):
@@ -47,7 +47,14 @@ def _parse_context(items: list[str]) -> dict:
 	return context
 
 
-def _build_engine(policy_file: str) -> tuple[dict, PolicyEngine, ObligationManager]:
+class EngineContext(TypedDict):
+	policy: PolicySet
+	audit_logger: AuditLogger
+	engine: PolicyEngine
+	manager: ObligationManager
+
+
+def _build_engine(policy_file: str) -> EngineContext:
 	init_db()
 	policy = load_policy(policy_file)
 	audit_logger = AuditLogger(policy_file=policy_file)

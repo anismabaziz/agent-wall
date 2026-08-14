@@ -57,13 +57,17 @@ Three entry points share the same core engine:
 Requirements: Python 3.12, [uv](https://docs.astral.sh/uv/).
 
 ```bash
-# 1. Install dependencies
-uv sync
+# 1. Install dependencies (incl. dev/lint tools)
+uv sync --dev
 
-# 2. Run the test suite (29 tests)
+# 2. Run the test suite
 uv run python -m pytest -q
 
-# 3. Start the API server
+# 3. Lint and type-check
+uv run ruff check .
+uv run mypy src integrations
+
+# 4. Start the API server
 uv run python -m uvicorn src.api:app --reload
 ```
 
@@ -93,8 +97,28 @@ Response:
 ### Other endpoints
 
 ```bash
-curl "http://localhost:8000/obligations?status=PENDING"   # list obligations
-curl "http://localhost:8000/audit-log?limit=100"          # audit trail
+curl "http://localhost:8000/obligations?status=PENDING"       # list obligations (limit/offset supported)
+curl "http://localhost:8000/audit-log?limit=100&offset=0"     # audit trail
+```
+
+### API security (optional)
+
+All optional; all are disabled/unrestricted by default:
+
+| Env var | Effect |
+|---|---|
+| `AGENT_WALL_API_KEY` | When set, every endpoint requires an `X-API-Key: <key>` header (otherwise `401`). |
+| `AGENT_WALL_RATE_LIMIT` | Max `/evaluate` calls per subject per minute (default `1000`; `0` disables). |
+| `AGENT_WALL_CORS_ORIGINS` | Comma-separated allowed origins (default `*`). |
+
+```bash
+AGENT_WALL_API_KEY=dev-key \
+AGENT_WALL_RATE_LIMIT=120 \
+AGENT_WALL_CORS_ORIGINS=http://localhost:5173 \
+  uv run python -m uvicorn src.api:app --reload
+
+# then
+curl -H "X-API-Key: dev-key" http://localhost:8000/obligations
 ```
 
 ## Policies
@@ -112,12 +136,51 @@ End-to-end scenarios live in `scenarios/` and are exercised by the parametrized 
 
 ## LangGraph integration
 
+AgentWall plugs into a LangGraph agent at the **tool boundary** so every tool call is checked against policy before it executes, exactly like the REST `/evaluate` endpoint — but inline in the graph.
+
+### The Extract–Evaluate–Apply contract
+
+Every tool the model proposes goes through three steps:
+
+| Step | Responsibility | Where |
+|---|---|---|
+| **Extract** | Map a raw tool call (`name`, `args`) into a normalized `Action` (subject, action_type, resource, context) | `normalize_tool_call()` in `integrations/langgraph/extract.py` |
+| **Evaluate** | Run the `Action` through `PolicyEngine.evaluate()` → `PERMIT` / `PROHIBIT` / `DEFAULT_DENY` | `src/engine.py` |
+| **Apply** | `PERMIT` → invoke the tool and register obligations; otherwise return a policy-violation `ToolMessage` | `AgentWallToolNode` in `integrations/langgraph/tool_node.py` |
+
 ```python
+from langchain_core.tools import tool
+from langchain_groq import ChatGroq
+from langgraph.checkpoint.memory import MemorySaver
+from src.models import load_policy
+from src.audit import AuditLogger
+from src.engine import PolicyEngine
+from src.obligations import ObligationManager
 from integrations.langgraph.builder import build_agent_wall_agent
+from integrations.langgraph.config import AgentWallConfig
+
+@tool
+def execute_payment(amount: float, recipient: str) -> str:
+    """Execute a payment to a recipient."""
+    return f"Paid {amount} to {recipient}"
+
+tools = [execute_payment]
+
+policy = load_policy("policies/p5_composite.yaml")
+audit_logger = AuditLogger(policy_file="p5_composite.yaml")
+policy_engine = PolicyEngine(policy, audit_logger=audit_logger)
+obligation_manager = ObligationManager(poll_interval_seconds=10, audit_logger=audit_logger)
+
+config = AgentWallConfig(
+    policy_file="p5_composite.yaml",
+    default_subject="payments_agent_1",
+)
+
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0).bind_tools(tools)
 
 app = build_agent_wall_agent(
     tools=tools,
-    llm=llm_with_tools,          # ChatGroq etc.
+    llm=llm,
     policy_engine=policy_engine,
     obligation_manager=obligation_manager,
     audit_logger=audit_logger,
@@ -126,7 +189,54 @@ app = build_agent_wall_agent(
 )
 ```
 
-See `integrations/langgraph/demo.py` for a runnable financial-services demo (requires a `GROQ_API_KEY`).
+### `AgentWallConfig`
+
+A `TypedDict` controlling extraction. All keys are optional:
+
+| Key | Type | Meaning |
+|---|---|---|
+| `policy_file` | `str` | Policy name for audit attribution |
+| `audit_db_path` | `str` | Override the SQLite audit/obligation DB path |
+| `obligation_poll_interval` | `int` | Seconds between deadline checks |
+| `default_subject` | `str` | Subject used when a tool call has no agent id |
+| `context_extractors` | `dict[str, Callable]` | Per-tool functions that enrich the `Action` context before evaluation |
+
+These correspond to the keys read by `build_agent_wall_agent` and `AgentWallToolNode`.
+
+### `AgentWallToolNode`
+
+A drop-in replacement for LangGraph's built-in `ToolNode`. You normally don't construct it directly — `build_agent_wall_agent` does — but it can be used on its own when you want the enforcement at a specific node:
+
+```python
+from integrations.langgraph.tool_node import AgentWallToolNode
+
+node = AgentWallToolNode(
+    tools=tools,
+    policy_engine=policy_engine,
+    obligation_manager=obligation_manager,
+    audit_logger=audit_logger,
+    config=config,
+)
+```
+
+### Using a custom context extractor
+
+Some policies need facts that aren't in the tool arguments. Register a per-tool extractor that reads the graph state and injects extra context:
+
+```python
+def enrich_with_state(tool_name, tool_input, state):
+    # Pull an approval flag from the agent/thread metadata.
+    return {"has_treasury_approval": state["configurable"]["approved"]}
+
+config = AgentWallConfig(
+    default_subject="payments_agent_1",
+    context_extractors={"execute_payment": enrich_with_state},
+)
+```
+
+The extracted keys are merged into the `Action.context` and matched against the policy's permission/prohibition constraints (see [Policies](#policies)).
+
+See `integrations/langgraph/demo.py` for a runnable financial-services demo (requires a `GROQ_API_KEY`; it exits cleanly even on error).
 
 ## Contributing
 

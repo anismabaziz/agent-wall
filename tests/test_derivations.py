@@ -1,6 +1,6 @@
 """Tests for src/derivations.py (issue #6)."""
-from src.models import PolicySet, Permission, Obligation
 from src.derivations import derived_obligations, deriving_permissions
+from src.models import Obligation, Permission, PolicySet
 
 
 def _policy():

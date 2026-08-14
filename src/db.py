@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 # Configurable DB path. Override with the AGENT_WALL_AUDIT_DB env var;
 # otherwise default to <repo root>/agent_wall_audit.db regardless of CWD.
@@ -11,7 +12,12 @@ if not os.path.isabs(_db_path):
 	_db_path = str(Path(__file__).resolve().parent.parent / _db_path)
 
 engine = create_engine(f"sqlite:///{_db_path}", echo=False)
-Base = declarative_base()
+
+
+class Base(DeclarativeBase):
+	"""Declarative base for all ORM models."""
+
+
 Session = sessionmaker(bind=engine)
 
 

@@ -9,7 +9,7 @@ engine uses it to compute the obligations attached to a PERMIT verdict.
 """
 from typing import Iterable
 
-from src.models import PolicySet, Obligation, Permission
+from src.models import Obligation, Permission, PolicySet
 
 
 def derived_obligations(
