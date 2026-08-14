@@ -60,6 +60,7 @@ class Verdict(BaseModel):
 	decision: Literal["PERMIT", "PROHIBIT", "DEFAULT_DENY"]
 	explanation: str
 	obligations: list[str] = []
+	permission_ids: list[str] = []
 
 
 

@@ -56,18 +56,11 @@ async def evaluate(request: EvaluateRequest):
 
 	# register obligations if permitted
 	if verdict.decision == "PERMIT" and verdict.obligations:
-		for obl_id in verdict.obligations:
-
-			obligation = next((o for o in policy.obligations if o.id == obl_id), None)
-
-			if obligation:
-				obligation_manager.register(
-					obligation_id=obl_id,
-					permission_id="unknown",
-					subject=request.subject,
-					obliged_action=obligation.obliged_action,
-					deadline_minutes=obligation.deadline_minutes
-				)
+		engine.register_obligations(
+			obligation_manager,
+			verdict=verdict,
+			subject=request.subject,
+		)
 	
 	# check dispensation
 	if policy.dispensations:

@@ -1,6 +1,7 @@
 import pytest
 from src.models import Action, load_policy, PolicySet, Permission, Prohibition
 from src.engine import PolicyEngine
+from src.obligations import ObligationManager
 from unittest.mock import patch
 
 
@@ -130,6 +131,30 @@ def test_engine_unresolved_conflict_defaults_to_deny():
 
 	assert verdict.decision == "DEFAULT_DENY"
 	assert "Unresolved conflict" in verdict.explanation
+
+
+def test_register_obligations_attributes_permission_id():
+
+	engine = PolicyEngine(load_policy("policies/p2_obligation.yaml"))
+	manager = ObligationManager()
+
+	action = Action(
+		subject="agent_1",
+		action_type="install_software",
+		resource="host://prod-01",
+		context={"is_managed_host": True},
+	)
+	verdict = engine.evaluate(action)
+
+	assert verdict.decision == "PERMIT"
+	assert verdict.permission_ids == ["Perm_InstallSoftware"]
+	assert "Ob_NotifyCISO" in verdict.obligations
+
+	records = engine.register_obligations(manager, verdict=verdict, subject="agent_1")
+
+	assert len(records) == 1
+	assert records[0].obligation_id == "Ob_NotifyCISO"
+	assert records[0].permission_id == "Perm_InstallSoftware"
 
 
 def test_explicit_permit_explicit_prohibit_default_permit():
