@@ -107,19 +107,30 @@ print("AGENTWALL-LANGGRAPH INTEGRATION DEMO")
 print("Flagship Policy: Financial Services")
 print("=" * 70)
 
-# Scenario 1: Unauthorized high-value payment (should be blocked)
-print("\n--- Scenario 1: Unauthorized High-Value Payment ---")
-result = app.invoke({
-	"messages": [
-		HumanMessage(
-		"Execute a high-value payment of $500,000 to vendor ABC Corp"
-		)
-	]
-}, 
-config={"configurable": {"thread_id": "scenario-1"}}
-)
 
-for msg in result["messages"]:
-	print(f"  {msg.type}: {msg.content[:200]}")
+def run_demo() -> None:
+	# Scenario 1: Unauthorized high-value payment (should be blocked)
+	print("\n--- Scenario 1: Unauthorized High-Value Payment ---")
+	result = app.invoke({
+		"messages": [
+			HumanMessage(
+			"Execute a high-value payment of $500,000 to vendor ABC Corp"
+			)
+		]
+	}, 
+	config={"configurable": {"thread_id": "scenario-1"}}
+	)
 
-obligation_manager.stop()
+	for msg in result["messages"]:
+		print(f"  {msg.type}: {msg.content[:200]}")
+
+
+def main() -> None:
+	try:
+		run_demo()
+	finally:
+		obligation_manager.stop()
+
+
+if __name__ == "__main__":
+	main()
