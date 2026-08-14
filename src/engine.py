@@ -1,7 +1,83 @@
 from typing import Optional
+from fnmatch import fnmatchcase
 from src.models import PolicySet, Action, Permission, Prohibition, Verdict
 from src.conflict import ConflictResolver
 from src.audit import AuditLogger
+
+
+def _to_number(value) -> Optional[float]:
+	"""Best-effort numeric coercion for range operators. Returns None if not numeric."""
+	if isinstance(value, bool):
+		return None
+	try:
+		return float(value)
+	except (TypeError, ValueError):
+		return None
+
+
+def _wildcard_match(pattern: str, actual) -> bool:
+	return fnmatchcase(str(actual), pattern)
+
+
+def _contains(container, operand) -> bool:
+	if isinstance(operand, list):
+		return all(item in container for item in operand)
+	return operand in container
+
+
+def operator_match(actual, expected) -> bool:
+	"""
+	Evaluate a single constraint value `expected` against the action value `actual`.
+
+	Supported forms (backward-compatible):
+	  - plain scalar        -> equality (e.g. {"is_high_value": True})
+	  - string with '*'     -> wildcard glob (e.g. "transaction://*")
+	  - operator dict       -> {"gt": N} {"lt": N} {"gte": N} {"lte": N}
+	                          {"neq": V} {"in": [...]} {"contains": [...]}
+	                          {"wildcard": "..."}
+	"""
+	if isinstance(expected, dict) and _is_operator_dict(expected):
+		return _operator_dict_match(actual, expected)
+
+	if isinstance(expected, str) and "*" in expected:
+		return _wildcard_match(expected, actual)
+
+	return actual == expected
+
+
+def _is_operator_dict(value: dict) -> bool:
+	operators = {"gt", "lt", "gte", "lte", "neq", "in", "contains", "wildcard"}
+	return bool(value) and all(k in operators for k in value)
+
+
+def _operator_dict_match(actual, expected: dict) -> bool:
+	for op, operand in expected.items():
+		if op in ("gt", "lt", "gte", "lte"):
+			a = _to_number(actual)
+			b = _to_number(operand)
+			if a is None or b is None:
+				return False
+			ok = {
+				"gt": a > b,
+				"lt": a < b,
+				"gte": a >= b,
+				"lte": a <= b,
+			}[op]
+			if not ok:
+				return False
+		elif op == "neq":
+			if actual == operand:
+				return False
+		elif op == "in":
+			if actual not in operand:
+				return False
+		elif op == "contains":
+			if not _contains(actual, operand):
+				return False
+		elif op == "wildcard":
+			if not _wildcard_match(operand, actual):
+				return False
+	return True
 
 
 class PolicyEngine:
@@ -16,14 +92,24 @@ class PolicyEngine:
 		if rule.action != action.action_type:
 			return False
 		
-		for key, expected_value in rule.constraint.items():
-			if key not in action.context:
+		for key, expected in rule.constraint.items():
+			# subject/resource are always keyed; other keys must be present in context
+			if key not in ("subject", "resource") and key not in action.context:
 				return False
-			
-			if action.context[key] != expected_value:
+			actual = self._constraint_value(action, key)
+			if not operator_match(actual, expected):
 				return False
 			
 		return True
+	
+
+	def _constraint_value(self, action: Action, key: str):
+		"""Resolve a constraint key to an action value, honouring subject/resource scoping."""
+		if key == "subject":
+			return action.subject
+		if key == "resource":
+			return action.resource
+		return action.context.get(key)
 	
 
 	def evaluate(self, action: Action) -> Verdict:
@@ -65,16 +151,9 @@ class PolicyEngine:
 
 
 		def _obligations_from(perms: list[Permission]) -> list[str]:
-			result = []
-			seen = set()
-
-			for perm in perms:
-				for obl_id in perm.provisions or []:
-					if obl_id not in seen:
-						seen.add(obl_id)
-						result.append(obl_id)
-			
-			return result
+			# central dedup of shared/provisioned obligations (issue #6)
+			from src.derivations import derived_obligations
+			return [o.id for o in derived_obligations(self.policy_set, [p.id for p in perms])]
 		
 
 		def _log(verdict: Verdict, matched_rules: list = None):

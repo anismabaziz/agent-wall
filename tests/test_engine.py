@@ -218,3 +218,80 @@ def test_implicit_prohibit_overrides_default_permit():
 
 
 
+
+
+# ---- Issue #15: extended constraint matching ----
+
+def _engine_with(permissions, prohibitions=(), default="explicit_permit_implicit_prohibit"):
+	policy = PolicySet(
+		permissions=list(permissions),
+		prohibitions=list(prohibitions),
+		obligations=[],
+		default_behavior=default,
+	)
+	return PolicyEngine(policy)
+
+
+def _eval_policy(policy, subject="agent_1", action_type="pay", resource="transaction://hvc",
+				 context=None):
+	engine = _engine_with(policy)
+	verdict = engine.evaluate(Action(
+		subject=subject, action_type=action_type, resource=resource, context=context or {},
+	))
+	return verdict.decision
+
+
+def test_range_operator_gt():
+	perm = Permission(id="Perm", action="pay", constraint={"amount": {"gt": 10000}})
+	assert _eval_policy([perm], context={"amount": 50000}) == "PERMIT"
+	assert _eval_policy([perm], context={"amount": 1000}) == "DEFAULT_DENY"
+
+
+def test_range_operators_gte_and_lte():
+	perm = Permission(id="Perm", action="pay", constraint={"amount": {"gte": 0, "lte": 1000}})
+	assert _eval_policy([perm], context={"amount": 1000}) == "PERMIT"
+	assert _eval_policy([perm], context={"amount": 500}) == "PERMIT"
+	assert _eval_policy([perm], context={"amount": 1001}) == "DEFAULT_DENY"
+
+
+def test_neq_operator():
+	perm = Permission(id="Perm", action="pay", constraint={"region": {"neq": "restricted"}})
+	assert _eval_policy([perm], context={"region": "eu"}) == "PERMIT"
+	assert _eval_policy([perm], context={"region": "restricted"}) == "DEFAULT_DENY"
+
+
+def test_in_operator():
+	perm = Permission(id="Perm", action="pay", constraint={"role": {"in": ["ops", "finance"]}})
+	assert _eval_policy([perm], context={"role": "ops"}) == "PERMIT"
+	assert _eval_policy([perm], context={"role": "audit"}) == "DEFAULT_DENY"
+
+
+def test_contains_operator():
+	perm = Permission(id="Perm", action="pay", constraint={"tags": {"contains": ["high"]}})
+	assert _eval_policy([perm], context={"tags": ["high", "priority"]}) == "PERMIT"
+	assert _eval_policy([perm], context={"tags": ["low"]}) == "DEFAULT_DENY"
+
+
+def test_wildcard_value():
+	perm = Permission(id="Perm", action="read", constraint={"doc": "report-*"})
+	assert _eval_policy([perm], action_type="read", resource="r", context={"doc": "report-2026"}) == "PERMIT"
+	assert _eval_policy([perm], action_type="read", resource="r", context={"doc": "draft-1"}) == "DEFAULT_DENY"
+
+
+def test_resource_pattern_wildcard():
+	perm = Permission(id="Perm", action="read", constraint={"resource": "transaction://*"})
+	assert _eval_policy([perm], action_type="read", resource="transaction://hvc-001") == "PERMIT"
+	assert _eval_policy([perm], action_type="read", resource="file://local") == "DEFAULT_DENY"
+
+
+def test_subject_scoping():
+	perm = Permission(id="Perm", action="pay", constraint={"subject": "payments_agent_1"})
+	assert _eval_policy([perm], subject="payments_agent_1") == "PERMIT"
+	assert _eval_policy([perm], subject="other_agent") == "DEFAULT_DENY"
+
+
+def test_explicit_operator_dict_backward_compat_still_matches_plain():
+	# a permission using plain equality for a truthy key still works
+	perm = Permission(id="Perm", action="pay", constraint={"is_high_value": True})
+	assert _eval_policy([perm], context={"is_high_value": True}) == "PERMIT"
+	assert _eval_policy([perm], context={"is_high_value": False}) == "DEFAULT_DENY"
