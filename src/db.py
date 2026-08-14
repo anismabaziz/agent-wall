@@ -15,13 +15,20 @@ engine = create_engine(f"sqlite:///{_db_path}", echo=False)
 
 
 class Base(DeclarativeBase):
-	"""Declarative base for all ORM models."""
+	"""
+	Declarative base shared by all ORM models so their tables can be created
+	together against the single configured engine.
+"""
 
 
 Session = sessionmaker(bind=engine)
 
 
 def resolve_db_path() -> str:
+	"""
+	Resolve the absolute path of the SQLite audit database, honouring the
+	AGENT_WALL_AUDIT_DB override and defaulting to the repo root.
+"""
 	path = os.environ.get("AGENT_WALL_AUDIT_DB", "agent_wall_audit.db")
 	if not os.path.isabs(path):
 		path = str(Path(__file__).resolve().parent.parent / path)
@@ -29,6 +36,9 @@ def resolve_db_path() -> str:
 
 
 def init_db() -> None:
-	"""Create tables for all registered models, importing them first."""
+	"""
+	Create tables for all registered models, importing them first so they
+	are declared on the shared Base.
+"""
 	from src import audit, obligation_store  # noqa: F401  (register tables on Base)
 	Base.metadata.create_all(engine)
