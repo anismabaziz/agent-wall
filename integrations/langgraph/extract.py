@@ -15,19 +15,24 @@ def normalize_tool_call(
 	agent_id: Optional[str] = None
 ) -> Action:
 	"""
-	Extract a normalized AgentWall Action from a raw LangGraph tool call.
-	This is the extract step of the Extract-Evaluate-Apply contract: it maps
-	the raw tool call to the tuple the PolicyEngine consumes.
+Extract a normalized AgentWall Action from a raw LangGraph tool call.
+This is the extract step of the Extract-Evaluate-Apply contract: it maps
+the raw tool call to the tuple the PolicyEngine consumes.
 
-	Args:
-		tool_name: The name of the tool being invoked
-		tool_input: The arguments the llm generated for the tool
-		state: The current LangGraph state (it contains messages, metadata)
-		config: AgentWall config
-		agent_id: Identifier for the calling agent
+Model-controlled arguments are copied into context ONLY as inert report
+data. Authorization-relevant facts (the resource type and any presented
+credential issuer) are staged from operator-owned logic, never declared by
+the model, so the machine decides using `matches_type` and `credential`.
 
-	Returns:
-		Normalized Action tuple for policy Evaluation
+Args:
+	tool_name: The name of the tool being invoked
+	tool_input: The arguments the llm generated for the tool
+	state: The current LangGraph state (it contains messages, metadata)
+	config: AgentWall config
+	agent_id: Identifier for the calling agent
+
+Returns:
+	Normalized Action tuple for policy Evaluation
 """
 	
 	subject = agent_id or config.get("default_subject", "unknown_agent")
@@ -45,6 +50,21 @@ def normalize_tool_call(
 	if tool_name in extractors:
 		extra_context = extractors[tool_name](tool_name, tool_input, state)
 		context.update(extra_context)
+
+	# strip any reserved keys the model might have tried to supply directly;
+	# authorization-relevant facts are re-staged below from operator-owned logic
+	for reserved in ("_resource_types", "_credential_issuer"):
+		context.pop(reserved, None)
+
+	# stage resource type from the operator-owned classifier (never the model)
+	classifier = config.get("resource_classifier")
+	if classifier:
+		context["_resource_types"] = list(classifier(tool_name, tool_input, state))
+
+	# stage the presented credential issuer from the operator-owned resolver
+	resolver = config.get("credential_resolver")
+	if resolver:
+		context["_credential_issuer"] = resolver(tool_name, tool_input, state)
 
 	context["_tool_name"] = tool_name
 

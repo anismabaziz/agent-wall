@@ -1,9 +1,25 @@
+# Flagship: financial-services policy.
+#
+# "High value" is a TYPE decided by the engine via subclass reasoning,
+# not a flag the model asserts. Approval is a CREDENTIAL whose issuer must be
+# in `credential_authorities`; the model cannot self-assert it.
+ontology:
+  - id: Transaction
+    subClassOf: []
+  - id: HighValueTransaction
+    subClassOf: [Transaction]
+  - id: CrossBorderTransfer
+    subClassOf: [HighValueTransaction]
+
+credential_authorities:
+  - TreasuryAuthority
+
 permissions:
   - id: Perm_ApprovedHighValue
     action: execute_payment
     constraint:
-      is_high_value: true
-      has_treasury_approval: true
+      matches_type: HighValueTransaction
+      credential: TreasuryAuthority
     provisions:
       - Ob_FileCTR
 
@@ -11,7 +27,7 @@ prohibitions:
   - id: Proh_AutoHighValue
     action: execute_payment
     constraint:
-      is_high_value: true
+      matches_type: HighValueTransaction
 
 obligations:
   - id: Ob_FileCTR

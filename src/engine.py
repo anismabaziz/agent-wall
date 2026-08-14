@@ -101,16 +101,45 @@ class PolicyEngine:
 	"""
 	Core engine that evaluates an action against a policy set, applying
 	conflict resolution and producing a verdict.
+
+	Constraint handling includes the `matches_type` and `credential` forms so
+	that decisions are determined by the machine, not the model: `matches_type`
+	reasons over a type ontology and `credential` honours only verified,
+	trusted-issuer passes.
 """
 
 	def __init__(self, policy_set: PolicySet, audit_logger: Optional[AuditLogger] = None):
 		"""
 		Store the policy set, build a conflict resolver from its rule
-		priorities, and hold the optional audit logger.
+		priorities, materialize the type ontology closure, and hold the
+		optional audit logger.
 """
 		self.policy_set = policy_set
 		self.conflict_resolver = ConflictResolver(policy_set.rule_priorities)
 		self.audit_logger = audit_logger
+		self._class_closure = self._build_type_closure(policy_set.ontology)
+
+	@staticmethod
+	def _build_type_closure(ontology: list) -> dict[str, set]:
+		"""
+		Materialize, once at load time, the transitive subclass closure so a
+		`matches_type` lookup over a parent class also covers every descendant.
+"""
+		if not ontology:
+			return {}
+		ancestors: dict[str, set] = {oc.id: set() for oc in ontology}
+		changed = True
+		while changed:
+			changed = False
+			for oc in ontology:
+				for parent in oc.subClassOf:
+					if parent not in ancestors:
+						continue
+					for a in ancestors[parent] | {parent}:
+						if a not in ancestors[oc.id]:
+							ancestors[oc.id].add(a)
+							changed = True
+		return {cls: ancestors[cls] | {cls} for cls in ancestors}
 
 	def _matches(self, action: Action, rule: Permission | Prohibition) -> bool:
 		"""
@@ -121,6 +150,14 @@ class PolicyEngine:
 			return False
 		
 		for key, expected in rule.constraint.items():
+			if key == "matches_type":
+				if not self._matches_type(action, expected):
+					return False
+				continue
+			if key == "credential":
+				if not self._matches_credential(action, expected):
+					return False
+				continue
 			# subject/resource are always keyed; other keys must be present in context
 			if key not in ("subject", "resource") and key not in action.context:
 				return False
@@ -129,7 +166,68 @@ class PolicyEngine:
 				return False
 			
 		return True
-	
+
+	def _matches_type(self, action: Action, class_name: str) -> bool:
+		"""
+		Return True when any of the action's staged resource types is a member
+		of the class named by `class_name` (or one of its subclasses).
+"""
+		return self._constraint_type_match(action.context, class_name)
+
+	def _matches_credential(self, action: Action, expected) -> bool:
+		"""
+		Return True only when the action presents a credential whose issuer is
+		both in the policy's trusted authorities and, when the constraint names
+		one, exactly matches it.
+"""
+		return self._constraint_credential_match(action.context, expected)
+
+	def _constraint_type_match(self, context: dict, class_name: str) -> bool:
+		"""
+		Check the staged type list in a context dict against a class, following
+		the subclass closure. A missing or empty type list never matches.
+"""
+		raw = context.get("_resource_types", [])
+		types = raw if isinstance(raw, list) else [raw]
+		for t in types:
+			closure = self._class_closure.get(t, {t})
+			if class_name in closure:
+				return True
+		return False
+
+	def _constraint_credential_match(self, context: dict, expected) -> bool:
+		"""
+		Verify a staged credential issuer from a context dict against the policy's
+		trusted authorities. No issuer, or an untrusted issuer, never matches.
+"""
+		issuer = context.get("_credential_issuer")
+		if not issuer:
+			return False
+		if str(issuer) not in self.policy_set.credential_authorities:
+			return False
+		if expected is True:
+			return True
+		return str(issuer) == expected
+
+	def constraint_match(self, context: dict, constraint: dict) -> bool:
+		"""
+		Match a bare context dict against a constraint dict (used by obligation
+		dispensation and fulfillment checks so the same operators apply there).
+"""
+		for key, expected in constraint.items():
+			if key == "matches_type":
+				if not self._constraint_type_match(context, expected):
+					return False
+				continue
+			if key == "credential":
+				if not self._constraint_credential_match(context, expected):
+					return False
+				continue
+			if key not in context:
+				return False
+			if not operator_match(context[key], expected):
+				return False
+		return True
 
 	def _constraint_value(self, action: Action, key: str):
 		"""

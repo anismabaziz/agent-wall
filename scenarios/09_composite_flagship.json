@@ -7,8 +7,8 @@
       "action_type": "execute_payment",
       "resource": "transaction://high-value-001",
       "context": {
-        "is_high_value": true,
-        "has_treasury_approval": true
+        "_resource_types": ["CrossBorderTransfer"],
+        "_credential_issuer": "TreasuryAuthority"
       }
     }
   ],

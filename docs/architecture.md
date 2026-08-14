@@ -41,15 +41,27 @@ A policy is YAML loaded into a `PolicySet` via `load_policy()` in
 `src/models.py`. `PolicySet` is a Pydantic model, so the file is validated at
 load time and a bad file fails fast.
 
-The composite example shows every construct:
+The composite example (`policies/p5_composite.yaml`) shows every construct,
+now using the type-reasoning and credential-gate forms:
 
 ```yaml
+ontology:
+  - id: Transaction
+    subClassOf: []
+  - id: HighValueTransaction
+    subClassOf: [Transaction]
+  - id: CrossBorderTransfer
+    subClassOf: [HighValueTransaction]
+
+credential_authorities:
+  - TreasuryAuthority
+
 permissions:
   - id: Perm_ApprovedHighValue
     action: execute_payment
     constraint:
-      is_high_value: true
-      has_treasury_approval: true
+      matches_type: HighValueTransaction
+      credential: TreasuryAuthority
     provisions:
       - Ob_FileCTR
 
@@ -57,7 +69,7 @@ prohibitions:
   - id: Proh_AutoHighValue
     action: execute_payment
     constraint:
-      is_high_value: true
+      matches_type: HighValueTransaction
 
 obligations:
   - id: Ob_FileCTR
@@ -111,6 +123,19 @@ For each rule, `_matches(action, rule)` decides whether it applies:
   `gt`, `lt`, `gte`, `lte`, `neq`, `in`, `contains`, and `wildcard`.
   Range operators coerce both sides to numbers and refuse to match when either
   side is not numeric.
+
+Two special constraint keys leave the decision to the machine rather than the
+model:
+
+- `matches_type` reasons over a small type ontology (`PolicySet.ontology`). It
+  is satisfied when any of the action's `_resource_types` is a member of the
+  named class or one of its subclasses. Because matching follows the subclass
+  closure, a rule over `HighValueTransaction` automatically covers
+  `CrossBorderTransfer` and any subclass added later — the rule itself does not
+  change.
+- `credential` gates on a verified pass. It is satisfied only when the action's
+  `_credential_issuer` is present and listed in `PolicySet.credential_authorities`.
+  An absent or untrusted issuer is treated as no approval (deny).
 
 ### Decision matrix
 
@@ -326,3 +351,42 @@ uv run python -m pytest -q     # unit + API + integration tests
 uv run ruff check src/ integrations/
 uv run mypy src/ integrations/
 ```
+
+## Machine-determined authorization
+
+Decision enforcement is deterministic and lives outside the LLM; the engine
+defaults to deny on any internal error. Two mechanisms close the gaps that would
+otherwise let a model assert its own authorization:
+
+- **Type reasoning.** "Is this high value?" is a *type*, decided by subclass
+  reasoning over `PolicySet.ontology`, not a flag the model writes. A rule over
+  `HighValueTransaction` uses `matches_type` and automatically covers
+  `CrossBorderTransfer` and any future subclass, so new domain types are covered
+  without editing rules.
+- **Credential-gated approval.** Approval is a pass whose issuer must be in
+  `PolicySet.credential_authorities` (`credential` constraint). A missing or
+  untrusted issuer means no approval. The model presents the pass; it does not
+  decide whether it is valid.
+
+In the LangGraph integration the extractor stages only operator-owned facts into
+the reserved context keys `_resource_types` and `_credential_issuer`
+(`resource_classifier` and `credential_resolver` in `AgentWallConfig`). Raw model
+tool arguments are inert report data; the model cannot reach those reserved keys.
+
+Where each concept lives:
+
+| Concept | AgentWall |
+| --- | --- |
+| Permission / Prohibition | `PolicySet.permissions` / `.prohibitions` |
+| Rule priority | `PolicySet.rule_priorities` |
+| Obligation + provision | `Obligation` + `Permission.provisions` |
+| Dispensation | `PolicySet.dispensations` |
+| Default behavior | `default_behavior` |
+| Extract–Evaluate–Apply | `extract.py` → `engine.py` → `tool_node.py` |
+| class ontology + subclass reasoning | `PolicySet.ontology` + `matches_type` |
+| trusted-issuer credential check | `credential_authorities` + `credential` |
+| structured, requested-attribute-only audit | `audit_log` incl. `policy_version` hash |
+
+The `policies/p5_composite.yaml` flagship policy demonstrates the pathway: a
+high-value typed payment is prohibited without a treasury credential, and
+permitted (filing a CTR obligation) with one.

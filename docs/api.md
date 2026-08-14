@@ -81,11 +81,15 @@ curl -X POST http://localhost:8000/evaluate \
     "action_type": "execute_payment",
     "resource": "transaction://high-value-001",
     "context": {
-      "is_high_value": true,
-      "has_treasury_approval": true
+      "_resource_types": ["CrossBorderTransfer"],
+      "_credential_issuer": "TreasuryAuthority"
     }
   }'
 ```
+
+The reserved `_resource_types` and `_credential_issuer` keys are authorization
+facts staged from operator-owned logic (not model arguments); see the type
+reasoning and credential gate notes in `architecture.md`.
 
 ```json
 {

@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 # Configurable DB path. Override with the AGENT_WALL_AUDIT_DB env var;
@@ -42,3 +42,16 @@ def init_db() -> None:
 """
 	from src import audit, obligation_store  # noqa: F401  (register tables on Base)
 	Base.metadata.create_all(engine)
+	_migrate()
+
+
+def _migrate() -> None:
+	"""
+	Additively migrate existing databases. create_all() will not add columns to
+	tables that already exist, so apply lightweight ALTERs for newly-introduced
+	columns here to keep older DB files (and dev instances) working.
+"""
+	cols = {c["name"] for c in inspect(engine).get_columns("audit_log")} if inspect(engine).has_table("audit_log") else set()
+	if cols and "policy_version" not in cols:
+		with engine.begin() as conn:
+			conn.execute(text("ALTER TABLE audit_log ADD COLUMN policy_version VARCHAR"))

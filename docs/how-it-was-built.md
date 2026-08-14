@@ -134,15 +134,37 @@ down. Six batches of changes went in, each fixing a theme:
 6. API security and tooling hygiene. The API gained an optional key, a
    per-subject rate limit, and configurable CORS.
 
-On top of those, the documentation was reorganized, the API reference was
-rewritten properly, and the project dropped its phase-based workflow in favor of
-committing directly to main.
+## Machine-determined authorization
+
+A later pass closed the two gaps that would otherwise let a model assert its own
+authorization. The engine gained two new constraint forms that put the decision
+in the machine rather than the model:
+
+- **Type reasoning.** "Is this transaction high value?" is now a *type*, decided
+  by subclass reasoning over a small ontology (`OntologyClass` /
+  `PolicySet.ontology`) via the new `matches_type` constraint. A rule over
+  `HighValueTransaction` automatically covers `CrossBorderTransfer` and any
+  subclass added later, without editing the rule.
+- **Credential-gated approval.** Approval is a pass whose issuer must be listed
+  in `PolicySet.credential_authorities` (`credential` constraint). A missing or
+  untrusted issuer means no approval, so the model cannot self-assert it.
+
+In the LangGraph integration the extractor stops copying model-written flags
+into context. It stages only operator-owned facts into the reserved keys
+`_resource_types` and `_credential_issuer` (`resource_classifier` /
+`credential_resolver` in `AgentWallConfig`), stripping those keys from model
+input first. The flagship policy moved to this pathway
+(`policies/p5_composite.yaml`).
+
+The audit log also grew a `policy_version` column — a sha256 of the policy file
+at load — so every decision can be reproduced against the exact rules in force.
+Existing audit databases are migrated in place (`src/db.py`).
 
 ## Where it stands today
 
 The engine, the obligation lifecycle, the audit log, the REST API, and the
 LangGraph integration are all implemented and tested. The test suite currently
-has 79 tests. The code builds on Pydantic for the model layer, FastAPI for the
+has 91 tests. The code builds on Pydantic for the model layer, FastAPI for the
 API, SQLAlchemy over SQLite for persistence, and LangGraph for the agent wiring.
 
 The short story: start with good data models, add the decision logic, handle the

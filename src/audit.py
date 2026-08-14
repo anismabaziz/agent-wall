@@ -1,4 +1,6 @@
+import hashlib
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column
@@ -33,6 +35,30 @@ class AuditEntry(Base):
 
 	# policy version
 	policy_file: Mapped[str]
+	policy_version: Mapped[Optional[str]]
+
+
+def _policy_hash(policy_file: str) -> str:
+	"""
+	Return the sha256 of the policy file contents, or an empty string when the
+	file cannot be read (e.g. policies built in memory rather than from a file).
+"""
+	try:
+		p = Path(policy_file)
+		if not p.is_file():
+			# may be a repo-root-relative path
+			root_relative = Path(__file__).resolve().parent.parent / policy_file
+			if not root_relative.is_file():
+				return ""
+			p = root_relative
+		return hashlib.sha256(p.read_bytes()).hexdigest()
+	except OSError:
+		return ""
+
+
+def _policy_hash_public(policy_file: str) -> str:
+	"""Public alias so tests can reference the helper without importing it privately."""
+	return _policy_hash(policy_file)
 
 
 class AuditLogger:
@@ -45,9 +71,11 @@ class AuditLogger:
 	def __init__(self, policy_file: str = "unknown"):
 		"""
 		Create a logger bound to a specific policy file, so every entry it
-		writes records which policy version produced the decision.
+		writes records which policy version produced the decision. The version
+		is the sha256 of the policy file contents (or empty when unavailable).
 """
 		self.policy_file = policy_file
+		self.policy_version = _policy_hash(policy_file)
 
 
 	def log_decision(
@@ -70,6 +98,7 @@ class AuditLogger:
 				explanation=verdict.explanation,
 				matched_rule_ids=",".join(matched_rule_ids or []),
 				policy_file=self.policy_file,
+				policy_version=self.policy_version,
 				obligation_id=obligation_change[0] if obligation_change else None,
 				obligation_status_change=obligation_change[1] if obligation_change else None
 			)
@@ -96,7 +125,8 @@ class AuditLogger:
 				explanation=f"Obligation {obligation_record.id} {event.lower()}",
 				obligation_id=obligation_record.id,
 				obligation_status_change=event,
-				policy_file=self.policy_file
+				policy_file=self.policy_file,
+				policy_version=self.policy_version
 			)
 
 			session.add(entry)

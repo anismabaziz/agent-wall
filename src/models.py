@@ -69,6 +69,16 @@ class RulePriority(BaseModel):
 	lesser: str
 
 
+class OntologyClass(BaseModel):
+	"""
+	Declares a single class in the lightweight type ontology (a small DAG).
+	Each class lists its parent classes via `subClassOf` so a rule expressed
+	over a class automatically covers its subclasses.
+"""
+	id: str
+	subClassOf: list[str] = []
+
+
 class PolicySet(BaseModel):
 	"""
 	The top-level container of all policy rules, listing every permission,
@@ -80,6 +90,10 @@ class PolicySet(BaseModel):
 	obligations: list[Obligation] = []
 	dispensations: list[Dispensation] = []
 	rule_priorities: list[RulePriority] = []
+	# Lightweight type ontology used by the `matches_type` constraint.
+	ontology: list[OntologyClass] = []
+	# Named trusted issuers whose credentials are honoured by `credential`.
+	credential_authorities: list[str] = []
 	default_behavior: Literal["explicit_permit_implicit_prohibit", "explicit_permit_explicit_prohibit"]
 	# Fallback decision when nothing matches in explicit_permit_explicit_prohibit mode.
 	default_decision: Literal["DENY", "PERMIT", "PROHIBIT"] = "DENY"
