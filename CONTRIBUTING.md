@@ -66,6 +66,7 @@ before merge.
 
 ## Resources
 
-- Developer guide (issues, roadmap): [`dev-guide/`](dev-guide/)
+- **Phase runbook** (the end-to-end process we use for every phase): [`docs/phase-runbook.md`](docs/phase-runbook.md)
+- Developer guide (issues, roadmap): [`dev-guide/`](dev-guide/) *(local only)*
 - Full workflow details: [`dev-guide/workflow.md`](dev-guide/workflow.md)
 - Issue tracker: https://github.com/anismabaziz/agent-wall/issues
