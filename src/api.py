@@ -19,7 +19,7 @@ POLICY_FILE = "policies/p5_composite.yaml"
 policy = load_policy(POLICY_FILE)
 audit_logger = AuditLogger(POLICY_FILE)
 engine = PolicyEngine(policy_set=policy, audit_logger=audit_logger)
-obligation_manager = ObligationManager(poll_interval_seconds=10)
+obligation_manager = ObligationManager(poll_interval_seconds=10, audit_logger=audit_logger)
 
 # start polling on startup
 @asynccontextmanager
