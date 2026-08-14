@@ -8,6 +8,10 @@ from pydantic import BaseModel
 
 
 class Action(BaseModel):
+	"""
+	Describes a single access-control request that the policy engine
+	evaluates against the configured rules.
+"""
 	subject: str
 	action_type: str
 	resource: str
@@ -15,6 +19,10 @@ class Action(BaseModel):
 
 
 class Permission(BaseModel):
+	"""
+	Represents a rule that grants a subject the right to perform an action
+	on a resource, subject to any declared constraints.
+"""
 	id: str
 	action: str
 	constraint: Dict[str, Any]
@@ -22,12 +30,20 @@ class Permission(BaseModel):
 
 
 class Prohibition(BaseModel):
+	"""
+	Represents a rule that denies a subject the right to perform an action
+	on a resource, subject to any declared constraints.
+"""
 	id: str
 	action: str
 	constraint: Dict[str, Any]
 
 
 class Obligation(BaseModel):
+	"""
+	Models a must-do action that must be fulfilled within a deadline once a
+	permission is granted.
+"""
 	id: str
 	obliged_action: str
 	deadline_minutes: int
@@ -35,18 +51,30 @@ class Obligation(BaseModel):
 
 
 class Dispensation(BaseModel):
+	"""
+	Represents a waiver that exempts a subject from a specific obligation.
+"""
 	id: str
 	constraint: Dict[str, Any]
 	waives: str
 
 
 class RulePriority(BaseModel):
+	"""
+	Declares an ordering where one rule outranks another when both match a
+	request, resolving conflicts between permissions and prohibitions.
+"""
 	id: str
 	greater: str
 	lesser: str
 
 
 class PolicySet(BaseModel):
+	"""
+	The top-level container of all policy rules, listing every permission,
+	prohibition, obligation, dispensation, and rule priority plus the
+	behaviour to apply when no explicit rule matches.
+"""
 	permissions: list[Permission] = []
 	prohibitions: list[Prohibition] = []
 	obligations: list[Obligation] = []
@@ -59,6 +87,10 @@ class PolicySet(BaseModel):
 
 
 class Verdict(BaseModel):
+	"""
+	Encapsulates the outcome of evaluating an action, including the final
+	decision, a human-readable explanation, and any resulting obligations.
+"""
 	decision: Literal["PERMIT", "PROHIBIT", "DEFAULT_DENY"]
 	explanation: str
 	obligations: list[str] = []
@@ -67,12 +99,19 @@ class Verdict(BaseModel):
 
 
 class ObligationStatus(str, Enum):
+	"""
+	Enumerates the lifecycle states a runtime obligation record can be in.
+"""
 	PENDING = "PENDING"
 	FULFILLED = "FULFILLED"
 	VIOLATED = "VIOLATED"
 	WAIVED = "WAIVED"
 
 class ObligationRecord(BaseModel):
+	"""
+	Stores the runtime, stateful record of a single obligation instance as
+	it progresses toward fulfillment or violation.
+"""
 	id: str
 	obligation_id: str
 	permission_id: str
@@ -88,6 +127,10 @@ class ObligationRecord(BaseModel):
 
 
 def load_policy(path: str | Path) -> PolicySet:
+	"""
+	Load a YAML policy file and validate it into a PolicySet, resolving a
+	relative path against the repository root.
+"""
 	path = Path(path)
 
 	if not path.is_absolute():

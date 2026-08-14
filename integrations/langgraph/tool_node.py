@@ -24,9 +24,7 @@ class AgentWallToolNode:
 	- Extract: normalize_tool_call() maps raw tool call to an Action tuple
 	- Evaluate: PolicyEngine.evaluate() returns a Verdict
 	- Apply: execute tool (PERMIT), return violation (PROHIBIT/DEFAULT_DENY)
-
-
-	"""
+"""
 
 
 	def __init__(
@@ -37,6 +35,9 @@ class AgentWallToolNode:
 		audit_logger: AuditLogger,
 		config: AgentWallConfig
 	):
+		"""
+		Store the tools and enforcement components used by the policy-aware tool node.
+"""
 		self.tools = tools
 		self.policy_engine = policy_engine
 		self.obligation_manager = obligation_manager
@@ -57,8 +58,7 @@ class AgentWallToolNode:
 			Extracts tool calls from the last AIMessage
 			For each tool call: Extract -> Evaluate -> Apply
 			Returns ToolMessages or policy validation messages
-		
-		"""
+"""
 		messages = state.get("messages", [])
 		if not messages:
 			return {"messages": []}
@@ -165,18 +165,8 @@ class AgentWallToolNode:
 	):
 		"""
 		Check if the current action fulfills any pending obligations.
-		"""
-
+"""
 		fulfilled = self.obligation_manager.check_fulfillment(action)
 
 		if fulfilled:
 			logger.info(f"Obligation {fulfilled.obligation_id} fulfilled by {action.subject}")
-
-
-
-
-
-
-
-
-

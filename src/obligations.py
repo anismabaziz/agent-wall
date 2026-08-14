@@ -8,8 +8,16 @@ from src.models import Action, Dispensation, ObligationRecord, ObligationStatus
 
 
 class ObligationManager:
+	"""
+	Manages the lifecycle of obligations, including registration, fulfillment
+	checking, deadline enforcement, and dispensation-based waiving.
+"""
 
 	def __init__(self, poll_interval_seconds: int = 5, audit_logger: Optional[AuditLogger] = None, store=None):
+		"""
+		Initialize the manager with an empty in-memory obligation registry,
+		an optional persistent store, and an optional audit logger.
+"""
 		self._obligations: dict[str, ObligationRecord] = {}
 		self._poll_interval = poll_interval_seconds
 		self._poll_task: Optional[asyncio.Task] = None
@@ -23,7 +31,7 @@ class ObligationManager:
 		Load persisted obligations from the store into memory (e.g. on startup).
 		Only obligations that are still open (PENDING/WAIVED/FULFILLED) are kept;
 		VIOLATED records are kept too so history is available in memory.
-		"""
+"""
 		if not self.store:
 			return
 
@@ -42,9 +50,9 @@ class ObligationManager:
 		fulfillment_constraint: Optional[dict] = None
 	):
 		"""
-		Called by PolicyEngine when permission with provisions fires.
-		"""
-
+		Create and persist a new obligation record for a permission with
+		provisions. Called by PolicyEngine when such a permission fires.
+"""
 		now = datetime.now(timezone.utc)
 		record= ObligationRecord(
 			id=f"{obligation_id}_{now.isoformat()}_{subject}",
@@ -70,11 +78,10 @@ class ObligationManager:
 
 	def check_fulfillment(self, action: Action) -> Optional[ObligationRecord]:
 		"""
-		Called by middleware when any action occurs.
-		if this action matches a PENDING obligation's obliged_action,
-		mark it FULFILLED and return the record. 
-		"""
-
+		Check whether an occurring action fulfills a PENDING obligation's
+		obliged_action. If it matches, mark the obligation FULFILLED and
+		return the record.
+"""
 		with self._lock:
 			for record in self._obligations.values():
 				if record.status != "PENDING":
@@ -102,9 +109,9 @@ class ObligationManager:
 
 	def _check_deadlines(self):
 		"""
-		Synchronous check called by polling loop.
-		"""
-
+		Synchronous check called by the polling loop that marks PENDING
+		obligations past their deadline as VIOLATED.
+"""
 		now = datetime.now(timezone.utc)
 
 		with self._lock:
@@ -122,9 +129,9 @@ class ObligationManager:
 
 	async def start_polling(self):
 		"""
-		Background task, start calling at system startup
-		"""
-
+		Background task that continuously checks deadlines at the configured
+		poll interval. Called at system startup.
+"""
 		while True:
 			self._check_deadlines()
 			await asyncio.sleep(self._poll_interval)
@@ -132,25 +139,23 @@ class ObligationManager:
 
 	def start(self):
 		"""
-		Fire and forget the polling loop
-		"""
-
+		Fire-and-forget the polling loop by scheduling start_polling as an
+		asyncio background task.
+"""
 		self._poll_task = asyncio.create_task(self.start_polling())
 
 
 	def stop(self):
 		"""
-		Stop background task
-		"""
-
+		Stop the background polling task if it is currently running.
+"""
 		if self._poll_task:
 			self._poll_task.cancel()
 
 	def get_obligations(self, status: Optional[ObligationStatus] = None) -> list[ObligationRecord]:
 		"""
-		Get obligations based on status
-		"""
-
+		Return all obligations, optionally filtered by a given status.
+"""
 		records = list(self._obligations.values())
 
 		if status: 
@@ -162,10 +167,9 @@ class ObligationManager:
 
 	def check_dispensation(self, action: Action, dispensations: list[Dispensation]) -> Optional[ObligationRecord]:
 		"""
-		Check if any dispensation rule matches the current context.
-		if so it waives the named obligation
-		"""
-
+		Check whether any dispensation rule matches the current context; if so,
+		waive the named PENDING obligation and return its record.
+"""
 		with self._lock:
 			for disp in dispensations:
 				if self._constraint_match(action.context, disp.constraint):
@@ -205,7 +209,7 @@ class ObligationManager:
 		Returns:
 			A dict with outcome summaries:
 			  {"dispensation": list[ObligationRecord], "fulfilled": ObligationRecord|None}"
-		"""
+"""
 		outcomes: dict[str, Any] = {"dispensation": [], "fulfilled": None}
 
 		with self._lock:
@@ -225,7 +229,10 @@ class ObligationManager:
 
 
 	def _constraint_match(self, context: dict, constraint: dict) -> bool:
-
+		"""
+		Return True if every key/value pair in the constraint matches the
+		provided context (used for fulfillment and dispensation checks).
+"""
 		for key, expected in constraint.items():
 			if key not in context or context[key] != expected:
 				return False

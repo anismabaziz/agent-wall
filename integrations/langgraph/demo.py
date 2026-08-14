@@ -18,17 +18,23 @@ load_dotenv()
 # define tools
 @tool
 def execute_payment(amount: float, recipient: str, currency: str = "USD") -> str:
-	"""Execute a payment to a recipient."""
+	"""
+	Execute a payment to a recipient.
+"""
 	return f"Payment of {currency} {amount} sent to {recipient}"
 
 @tool
 def file_ctr(report_id: str) -> str:
-		"""File a Currency Transaction Report with FinCEN."""
+		"""
+		File a Currency Transaction Report with FinCEN.
+"""
 		return f"CTR {report_id} filed successfully"
 
 @tool
 def check_balance(account: str) -> str:
-		"""Check account balance."""
+		"""
+		Check account balance.
+"""
 		return f"Balance for {account}: $1,000,000"
 
 
@@ -112,6 +118,9 @@ print("=" * 70)
 
 
 def run_demo() -> None:
+	"""
+	Run the demo scenarios and print the agent's responses.
+"""
 	# Scenario 1: Unauthorized high-value payment (should be blocked)
 	print("\n--- Scenario 1: Unauthorized High-Value Payment ---")
 	result = app.invoke({
@@ -129,6 +138,9 @@ def run_demo() -> None:
 
 
 def main() -> None:
+	"""
+	Run the demo and ensure background obligation polling is stopped.
+"""
 	try:
 		run_demo()
 	finally:

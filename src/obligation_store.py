@@ -10,6 +10,10 @@ from src.models import ObligationRecord, ObligationStatus
 
 
 class ObligationEntry(Base):
+	"""
+	SQLAlchemy ORM model mapping an obligation to the "obligations" table.
+"""
+
 	__tablename__ = "obligations"
 
 	id: Mapped[str] = mapped_column(primary_key=True)
@@ -27,8 +31,17 @@ class ObligationEntry(Base):
 
 
 class ObligationStore:
+	"""
+	Persists and loads obligation records via SQLAlchemy, using either an
+	isolated store for tests or the shared configured application database.
+"""
 
 	def __init__(self, db_path: Optional[str] = None):
+		"""
+		Set up the database session factory. When db_path is given, create an
+		isolated SQLite engine bound to that path; otherwise reuse the shared
+		configured session and initialize the database.
+"""
 		if db_path:
 			# isolated store (used by tests against a temp DB)
 			engine = create_engine(f"sqlite:///{db_path}", echo=False)
@@ -40,9 +53,16 @@ class ObligationStore:
 			init_db()
 
 	def _session(self):
+		"""
+		Return a new session from the configured session factory.
+"""
 		return self._session_local()
 
 	def _to_entry(self, record: ObligationRecord) -> ObligationEntry:
+		"""
+		Convert an ObligationRecord domain object into an ObligationEntry,
+		serializing the fulfillment constraint to JSON for storage.
+"""
 		return ObligationEntry(
 			id=record.id,
 			obligation_id=record.obligation_id,
@@ -59,6 +79,10 @@ class ObligationStore:
 		)
 
 	def _from_entry(self, entry: ObligationEntry) -> ObligationRecord:
+		"""
+		Convert an ObligationEntry into an ObligationRecord domain object,
+		deserializing the fulfillment constraint from JSON.
+"""
 		return ObligationRecord(
 			id=entry.id,
 			obligation_id=entry.obligation_id,
@@ -75,6 +99,10 @@ class ObligationStore:
 		)
 
 	def save(self, record: ObligationRecord) -> None:
+		"""
+		Upsert an obligation record into the database, inserting a new row when
+		it does not exist or updating its mutable fields when it does.
+"""
 		entry = self._to_entry(record)
 		with self._session() as session:
 			existing = session.get(ObligationEntry, record.id)
@@ -93,6 +121,9 @@ class ObligationStore:
 			session.commit()
 
 	def load_all(self) -> list[ObligationRecord]:
+		"""
+		Load and return every persisted obligation as an ObligationRecord.
+"""
 		with self._session() as session:
 			entries = session.query(ObligationEntry).all()
 			return [self._from_entry(e) for e in entries]
