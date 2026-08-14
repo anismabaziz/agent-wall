@@ -7,7 +7,7 @@ from .extract import normalize_tool_call
 from src.engine import PolicyEngine
 from src.obligations import ObligationManager
 from src.audit import AuditLogger
-from src.models import Action, Verdict, Obligation
+from src.models import Action
 import logging
 
 
@@ -102,9 +102,12 @@ class AgentWallToolNode:
 					tool = self.tools_by_name[tool_name]
 					result = tool.invoke(tool_input)
 
-					# register obligations
-					for obl_id in verdict.obligations:
-						self._register_obligation(obl_id, action, verdict)
+					# register obligations centralised on the engine
+					self.policy_engine.register_obligations(
+						self.obligation_manager,
+						verdict=verdict,
+						subject=action.subject,
+					)
 					
 					# check if any action fulfills a pending obligation
 					self._check_fulfillement(action)
@@ -153,40 +156,6 @@ class AgentWallToolNode:
 		return {"messages": results}
 	
 
-	def _register_obligation(
-		self,
-		obligation_id: str,
-		action: Action,
-		verdict: Verdict
-	):
-		"""
-		Register an obligation that rises from a permitted action.
-		Looks up the obligation template from the policy engine and created a runtime ObligationRecord
-		via the ObligationManager
-		"""
-
-		# get obligation from policy engine loaded policy set
-		obligation = self._get_obligation_template(obligation_id)
-
-		if not obligation:
-			logger.warning(f"Obligation '{obligation_id}' not found in policy")
-			return
-		
-		# extract permission ID that triggers this obligation
-		permission_id = self._extract_permission_id(verdict.explanation)
-
-		self.obligation_manager.register(
-			obligation_id=obligation_id,
-			permission_id=permission_id,
-			subject=action.subject,
-			obliged_action=obligation.obliged_action,
-			deadline_minutes=obligation.deadline_minutes,
-			fulfillment_constraint=action.context
-		)
-
-		logger.info(f"Registered obligation {obligation_id} for {action.subject}")
-
-
 	def _check_fulfillement(
 		self,
 		action: Action
@@ -199,37 +168,6 @@ class AgentWallToolNode:
 
 		if fulfilled:
 			logger.info(f"Obligation {fulfilled.obligation_id} fulfilled by {action.subject}")
-
-
-	def _get_obligation_template(
-		self,
-		obligation_id: str
-	) -> Optional[Obligation]:
-		"""
-		Look up an obligation template from the loaded policy set.
-		"""
-
-		for obligation in self.policy_engine.policy_set.obligations:
-			if obligation.id == obligation_id:
-				return obligation;
-
-		return None
-	
-	def _extract_permission_id(
-		self,
-		explanation: str
-	):
-		"""
-		Extract permission id from verdict explanation.
-		"""
-
-		if "Permitted by rules: " in explanation:
-			return explanation.split("Permitted by rules: ")[1].split(",")[0].strip()
-		
-		if " outranks " in explanation:
-			return explanation.split(": ")[1].split(" ")[0].strip()
-		
-		return "unknown"
 
 
 

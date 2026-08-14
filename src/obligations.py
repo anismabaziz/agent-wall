@@ -3,6 +3,7 @@ from typing import Optional
 from src.models import Action, Dispensation, ObligationRecord, ObligationStatus
 from src.audit import AuditLogger
 import asyncio
+import threading
 
 
 
@@ -15,8 +16,9 @@ class ObligationManager:
 		self._poll_interval = poll_interval_seconds
 		self._poll_task: Optional[asyncio.Task] = None
 		self.audit_logger = audit_logger
+		self._lock = threading.RLock()
 
-	
+
 	def register(
 		self,
 		obligation_id: str,
@@ -41,7 +43,8 @@ class ObligationManager:
 			fulfillment_constraint= fulfillment_constraint or {}
 		)
 
-		self._obligations[record.id] = record
+		with self._lock:
+			self._obligations[record.id] = record
 
 		if self.audit_logger:
 			self.audit_logger.log_obligation(record, "CREATED")
@@ -56,18 +59,23 @@ class ObligationManager:
 		mark it FULFILLED and return the record. 
 		"""
 
-		for record in self._obligations.values():
-			if record.status != "PENDING":
-				continue
+		with self._lock:
+			for record in self._obligations.values():
+				if record.status != "PENDING":
+					continue
 
-			if action.action_type == record.obliged_action:
-				if action.subject == record.subject:
-					record.status = ObligationStatus.FULFILLED
-					record.fulfilled_at = datetime.now(timezone.utc)
+				if action.action_type == record.obliged_action:
+					if action.subject == record.subject:
+						# the fulfilling action must satisfy the obligation's constraints
+						if not self._constraint_match(action.context, record.fulfillment_constraint):
+							continue
 
-					if self.audit_logger:
-						self.audit_logger.log_obligation(record, "FULFILLED", action)
-					return record
+						record.status = ObligationStatus.FULFILLED
+						record.fulfilled_at = datetime.now(timezone.utc)
+
+						if self.audit_logger:
+							self.audit_logger.log_obligation(record, "FULFILLED", action)
+						return record
 				
 
 		return None
@@ -80,13 +88,14 @@ class ObligationManager:
 
 		now = datetime.now(timezone.utc)
 
-		for record in self._obligations.values():
-			if record.status == ObligationStatus.PENDING and now > record.deadline:
-				record.status = ObligationStatus.VIOLATED
-				record.violated_at = now
+		with self._lock:
+			for record in self._obligations.values():
+				if record.status == ObligationStatus.PENDING and now > record.deadline:
+					record.status = ObligationStatus.VIOLATED
+					record.violated_at = now
 
-				if self.audit_logger:
-					self.audit_logger.log_obligation(record, "VIOLATED")
+					if self.audit_logger:
+						self.audit_logger.log_obligation(record, "VIOLATED")
 
 
 	async def start_polling(self):
@@ -135,19 +144,20 @@ class ObligationManager:
 		if so it waives the named obligation
 		"""
 
-		for disp in dispensations:
-			if self._constraint_match(action.context, disp.constraint):
-				for record in self._obligations.values():
-					if (record.status == ObligationStatus.PENDING and record.obligation_id == disp.waives):
-						record.status = ObligationStatus.WAIVED
-						record.waived_at = datetime.now(timezone.utc)
-						record.waived_by = disp.id
+		with self._lock:
+			for disp in dispensations:
+				if self._constraint_match(action.context, disp.constraint):
+					for record in self._obligations.values():
+						if (record.status == ObligationStatus.PENDING and record.obligation_id == disp.waives):
+							record.status = ObligationStatus.WAIVED
+							record.waived_at = datetime.now(timezone.utc)
+							record.waived_by = disp.id
 
-						if self.audit_logger:
-							self.audit_logger.log_obligation(record, "WAIVED")
+							if self.audit_logger:
+								self.audit_logger.log_obligation(record, "WAIVED")
+							
+							return record
 						
-						return record
-					
 		return None
 
 	
