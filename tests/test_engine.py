@@ -132,5 +132,64 @@ def test_engine_unresolved_conflict_defaults_to_deny():
 	assert "Unresolved conflict" in verdict.explanation
 
 
+def test_explicit_permit_explicit_prohibit_default_permit():
+
+	policy = PolicySet(
+		permissions=[],
+		prohibitions=[],
+		obligations=[],
+		dispensations=[],
+		rule_priorities=[],
+		default_behavior="explicit_permit_explicit_prohibit",
+		default_decision="PERMIT",
+	)
+	engine = PolicyEngine(policy)
+
+	action = Action(subject="agent_1", action_type="anything", resource="r", context={})
+	verdict = engine.evaluate(action)
+
+	assert verdict.decision == "PERMIT"
+
+
+def test_explicit_permit_explicit_prohibit_default_prohibit():
+
+	policy = PolicySet(
+		permissions=[],
+		prohibitions=[],
+		obligations=[],
+		dispensations=[],
+		rule_priorities=[],
+		default_behavior="explicit_permit_explicit_prohibit",
+		default_decision="PROHIBIT",
+	)
+	engine = PolicyEngine(policy)
+
+	action = Action(subject="agent_1", action_type="anything", resource="r", context={})
+	verdict = engine.evaluate(action)
+
+	assert verdict.decision == "PROHIBIT"
+
+
+def test_implicit_prohibit_overrides_default_permit():
+
+	# In explicit_permit_implicit_prohibit, no-match is deny even if a default
+	# decision is configured, because prohibition is implicit.
+	policy = PolicySet(
+		permissions=[],
+		prohibitions=[],
+		obligations=[],
+		dispensations=[],
+		rule_priorities=[],
+		default_behavior="explicit_permit_implicit_prohibit",
+		default_decision="PERMIT",
+	)
+	engine = PolicyEngine(policy)
+
+	action = Action(subject="agent_1", action_type="anything", resource="r", context={})
+	verdict = engine.evaluate(action)
+
+	assert verdict.decision == "DEFAULT_DENY"
+
+
 
 

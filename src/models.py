@@ -51,6 +51,8 @@ class PolicySet(BaseModel):
 	dispensations: list[Dispensation] = []
 	rule_priorities: list[RulePriority] = []
 	default_behavior: Literal["explicit_permit_implicit_prohibit", "explicit_permit_explicit_prohibit"]
+	# Fallback decision when nothing matches in explicit_permit_explicit_prohibit mode.
+	default_decision: Literal["DENY", "PERMIT", "PROHIBIT"] = "DENY"
 
 
 

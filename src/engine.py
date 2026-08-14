@@ -148,10 +148,21 @@ class PolicyEngine:
 			return _log(verdict, matched_permissions + matched_prohibitions)
 
 
-		# nothing matches => DEFAULT_DENY
+		# nothing matches => honor default_behavior
+		if self.policy_set.default_behavior == "explicit_permit_implicit_prohibit":
+			decision, reason = "DEFAULT_DENY", "No matching permission rules found"
+		else:
+			match self.policy_set.default_decision:
+				case "PERMIT":
+					decision, reason = "PERMIT", "No explicit rule; default permits"
+				case "PROHIBIT":
+					decision, reason = "PROHIBIT", "No explicit rule; default prohibits"
+				case _:
+					decision, reason = "DEFAULT_DENY", "No matching rule; default deny"
+
 		verdict = Verdict(
-			decision="DEFAULT_DENY",
-			explanation="No matching permission rules found",
+			decision=decision,
+			explanation=reason,
 			obligations=[]
 		)
 		return _log(verdict, matched_permissions + matched_prohibitions)
