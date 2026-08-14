@@ -240,12 +240,8 @@ See `integrations/langgraph/demo.py` for a runnable financial-services demo (req
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for branch naming, commit message
-style (one sentence), and how to work on an issue.
-
-Want the exact end-to-end process we use to ship each roadmap phase (branch →
-commit → verify → PR tagging its issues → merge)? See
-[`docs/phase-runbook.md`](docs/phase-runbook.md).
+See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) for the commit-to-`main`
+workflow and commit message style (one sentence).
 
 ## Project layout
 
@@ -257,20 +253,20 @@ src/
   obligations.py   ObligationManager — register / fulfill / waive / violate + deadline polling
   audit.py         AuditLogger — SQLAlchemy + SQLite audit store
   api.py           FastAPI service
-  derivations.py   (placeholder — not yet implemented)
+  derivations.py   Derived policy evaluation
 integrations/
   langgraph/       Extract-Evaluate-Apply tool node + agent builder + demo
 policies/          Example YAML policy sets
 scenarios/         JSON end-to-end scenarios
-tests/             Pytest suite (29 tests)
-main.py            CLI stub (not yet implemented)
-api.md             API usage notes
+tests/             Pytest suite
+main.py            CLI entry point
+docs/
+  api.md           API usage notes
+  CONTRIBUTING.md  Contributing guide
 ```
 
 ## Status
 
 Core engine, obligation lifecycle, audit logging, REST API, and LangGraph integration are implemented and tested.
 
-- Known issues & gaps: [`dev-guide/issues.md`](dev-guide/issues.md)
-- Roadmap to v1 (with GitHub issue links): [`dev-guide/roadmap-to-v1.md`](dev-guide/roadmap-to-v1.md)
-- Issue tracker (open / planned work, tagged by `phase:0`–`phase:5`): https://github.com/anismabaziz/agent-wall/issues
+- Issue tracker (open / planned work): https://github.com/anismabaziz/agent-wall/issues
