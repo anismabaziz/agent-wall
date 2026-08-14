@@ -84,9 +84,9 @@ def cmd_evaluate(args) -> int:
 
 	if verdict.decision == "PERMIT" and verdict.obligations:
 		ctx["engine"].register_obligations(ctx["manager"], verdict=verdict, subject=args.subject)
-	if ctx["policy"].dispensations:
-		ctx["manager"].check_dispensation(action, ctx["policy"].dispensations)
-	ctx["manager"].check_fulfillment(action)
+
+	# deterministic ordering: dispensation -> fulfillment -> deadline (issue #16)
+	ctx["manager"].enforce(action, ctx["policy"].dispensations, check_deadline=True)
 
 	_print_dict({
 		"decision": verdict.decision,

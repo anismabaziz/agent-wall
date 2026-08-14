@@ -187,6 +187,42 @@ class ObligationManager:
 						
 		return None
 
+
+	def enforce(self, action: Action, dispensations: Optional[list[Dispensation]] = None,
+				check_deadline: bool = True) -> dict:
+		"""
+		Apply the deterministic event ordering: dispensation -> fulfillment -> deadline.
+
+		When multiple events arrive together the outcome is guaranteed and
+		documented, so consumers never depend on registration quirks:
+
+		  1. dispensation: matching PENDING obligations are waived first
+		  2. fulfillment:  a PENDING obligation matching this action is fulfilled
+		  3. deadline:      remaining PENDING obligations past their deadline become
+		                     VIOLATED
+
+		Wrapping the sequence in a single lock makes the order atomic with
+		respect to concurrent events.
+
+		Returns:
+			A dict with outcome summaries:
+			  {"dispensation": list[ObligationRecord], "fulfilled": ObligationRecord|None}"
+		"""
+		outcomes = {"dispensation": [], "fulfilled": None}
+
+		with self._lock:
+			for disp in (dispensations or []):
+				waived = self.check_dispensation(action, [disp])
+				if waived is not None:
+					outcomes["dispensation"].append(waived)
+
+			outcomes["fulfilled"] = self.check_fulfillment(action)
+
+			if check_deadline:
+				self._check_deadlines()
+
+		return outcomes
+
 	
 
 

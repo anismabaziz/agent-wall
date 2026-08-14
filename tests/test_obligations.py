@@ -329,3 +329,73 @@ def test_fulfillment_requires_matching_constraint():
 	)
 	assert matching is not None
 	assert matching.status == ObligationStatus.FULFILLED
+
+# ---- Issue #16: deterministic dispensation -> fulfillment -> deadline ordering ----
+
+def test_enforce_applies_dispensation_before_fulfillment():
+	"""When a dispensation and a fulfillment match the same action, waiver wins."""
+	manager = ObligationManager()
+	manager.register(
+		obligation_id="Ob_FileCTR",
+		permission_id="Perm_HighValue",
+		subject="agent_1",
+		obliged_action="file_ctr",
+		deadline_minutes=60,
+	)
+
+	dispensation = Dispensation(
+		id="Disp_ExemptCTR",
+		constraint={"is_exempt_counterparty": True},
+		waives="Ob_FileCTR",
+	)
+
+	action = Action(
+		subject="agent_1",
+		action_type="file_ctr",
+		resource="ctr/1",
+		context={"is_exempt_counterparty": True},
+	)
+
+	outcomes = manager.enforce(action, [dispensation], check_deadline=False)
+
+	assert len(outcomes["dispensation"]) == 1
+	assert outcomes["dispensation"][0].status == ObligationStatus.WAIVED
+
+	# fulfillment runs after dispensation, so nothing left PENDING to fulfill
+	oblig = next(o for o in manager.get_obligations() if o.obligation_id == "Ob_FileCTR")
+	assert oblig.status == ObligationStatus.WAIVED
+
+
+def test_enforce_fulfills_when_no_dispensation_matches():
+	manager = ObligationManager()
+	manager.register(
+		obligation_id="Ob_FileCTR",
+		permission_id="Perm_HighValue",
+		subject="agent_1",
+		obliged_action="file_ctr",
+		deadline_minutes=60,
+	)
+	action = Action(subject="agent_1", action_type="file_ctr", resource="ctr/1", context={})
+
+	outcomes = manager.enforce(action, [Dispensation(id="d", constraint={"nope": True}, waives="Ob_FileCTR")],
+							   check_deadline=False)
+	assert outcomes["dispensation"] == []
+	assert outcomes["fulfilled"] is not None
+	assert outcomes["fulfilled"].status == ObligationStatus.FULFILLED
+
+
+def test_enforce_marks_past_deadline_as_violated():
+	manager = ObligationManager()
+	record = manager.register(
+		obligation_id="Ob_FileCTR",
+		permission_id="Perm_HighValue",
+		subject="agent_1",
+		obliged_action="file_ctr",
+		deadline_minutes=60,
+	)
+
+	action = Action(subject="agent_1", action_type="something_else", resource="r", context={})
+	with freeze_time(datetime.now(timezone.utc) + timedelta(minutes=61)):
+		manager.enforce(action, [], check_deadline=True)
+
+	assert record.status == ObligationStatus.VIOLATED
