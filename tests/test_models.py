@@ -1,6 +1,8 @@
 import pytest
-from src.models import load_policy, PolicySet
 from pydantic import ValidationError
+
+from src.models import PolicySet, load_policy
+
 
 def test_load_valid_policy():
 	policy_set = load_policy("policies/p1_basic.yaml")

@@ -1,30 +1,34 @@
 import json
-from sqlalchemy import create_engine, Column, String, DateTime
-from sqlalchemy.orm import sessionmaker
-from src.models import ObligationRecord, ObligationStatus
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
+
 from src.db import Base, Session, init_db
+from src.models import ObligationRecord, ObligationStatus
 
 
 class ObligationEntry(Base):
 	__tablename__ = "obligations"
 
-	id = Column(String, primary_key=True)
-	obligation_id = Column(String, nullable=False)
-	permission_id = Column(String, nullable=False, default="unknown")
-	subject = Column(String, nullable=False)
-	obliged_action = Column(String, nullable=False)
-	deadline = Column(DateTime, nullable=False)
-	status = Column(String, nullable=False)
-	fulfilled_at = Column(DateTime)
-	violated_at = Column(DateTime)
-	waived_at = Column(DateTime)
-	waived_by = Column(String)
-	fulfillment_constraint = Column(String, nullable=False, default="{}")
+	id: Mapped[str] = mapped_column(primary_key=True)
+	obligation_id: Mapped[str]
+	permission_id: Mapped[str] = mapped_column(default="unknown")
+	subject: Mapped[str]
+	obliged_action: Mapped[str]
+	deadline: Mapped[datetime]
+	status: Mapped[str]
+	fulfilled_at: Mapped[Optional[datetime]]
+	violated_at: Mapped[Optional[datetime]]
+	waived_at: Mapped[Optional[datetime]]
+	waived_by: Mapped[Optional[str]]
+	fulfillment_constraint: Mapped[str] = mapped_column(default="{}")
 
 
 class ObligationStore:
 
-	def __init__(self, db_path: str = None):
+	def __init__(self, db_path: Optional[str] = None):
 		if db_path:
 			# isolated store (used by tests against a temp DB)
 			engine = create_engine(f"sqlite:///{db_path}", echo=False)

@@ -1,6 +1,9 @@
 import os
 import tempfile
 
+# Imports below are intentionally deferred until after setting the env var,
+# which is why the module-level-import check (E402) is disabled for this file.
+# ruff: noqa: E402
 # Must point the app at an isolated DB before importing src.api,
 # since db.engine is created at import time from this env var.
 _fd, _db_path = tempfile.mkstemp(suffix=".db")
@@ -13,7 +16,6 @@ import src.api as api
 from src.models import ObligationStatus
 from src.obligation_store import ObligationStore
 from src.obligations import ObligationManager
-from src.audit import AuditLogger
 
 
 def _annotation_func():

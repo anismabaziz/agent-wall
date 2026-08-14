@@ -1,15 +1,17 @@
-from typing import Callable, Sequence, Union, Dict, Any, List, Optional
-from langchain_core.tools import BaseTool
+import logging
+from typing import Any, Callable, Dict, List, Sequence, Union
+
 from langchain_core.messages import ToolMessage
+from langchain_core.tools import BaseTool
+
 from langgraph.graph import MessagesState
+from src.audit import AuditLogger
+from src.engine import PolicyEngine
+from src.models import Action
+from src.obligations import ObligationManager
+
 from .config import AgentWallConfig
 from .extract import normalize_tool_call
-from src.engine import PolicyEngine
-from src.obligations import ObligationManager
-from src.audit import AuditLogger
-from src.models import Action
-import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +44,10 @@ class AgentWallToolNode:
 		self.config = config
 
 
-		self.tools_by_name = {
-			tool.name: tool for tool in tools
-		}
+		self.tools_by_name: dict[str, BaseTool] = {}
+		for tool in tools:
+			if isinstance(tool, BaseTool):
+				self.tools_by_name[tool.name] = tool
 
 	def __call__(self, state: MessagesState) -> Dict[str, Any]:
 		"""

@@ -1,6 +1,6 @@
 from typing import Optional
-from src.models import RulePriority
 
+from src.models import RulePriority
 
 
 class ConflictResolver:

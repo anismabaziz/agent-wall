@@ -3,17 +3,22 @@
 These exercise AgentWallToolNode directly with fabricated messages, so no
 live LLM or network access is required. See issue #14.
 """
-from langchain_core.tools import tool
 from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.tools import tool
 
-from src.models import (
-	Obligation, PolicySet, Prohibition, Dispensation, RulePriority, Permission,
-	ObligationStatus,
-)
-from src.engine import PolicyEngine
-from src.obligations import ObligationManager
 from integrations.langgraph.config import AgentWallConfig
 from integrations.langgraph.tool_node import AgentWallToolNode
+from src.engine import PolicyEngine
+from src.models import (
+	Dispensation,
+	Obligation,
+	ObligationStatus,
+	Permission,
+	PolicySet,
+	Prohibition,
+	RulePriority,
+)
+from src.obligations import ObligationManager
 
 
 @tool

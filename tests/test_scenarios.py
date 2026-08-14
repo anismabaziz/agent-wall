@@ -1,13 +1,13 @@
 import json
-import pytest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from src.models import Action, load_policy, ObligationStatus
-from src.engine import PolicyEngine
-from src.obligations import ObligationManager
+import pytest
 from freezegun import freeze_time
-from datetime import datetime, timezone, timedelta
 
+from src.engine import PolicyEngine
+from src.models import Action, ObligationStatus, load_policy
+from src.obligations import ObligationManager
 
 SCENARIO_DIR = Path(__file__).parent.parent / "scenarios"
 SCENARIO_FILES = sorted(SCENARIO_DIR.glob("*.json"))

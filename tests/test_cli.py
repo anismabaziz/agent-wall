@@ -11,9 +11,9 @@ os.environ["AGENT_WALL_AUDIT_DB"] = os.path.join(
 
 import pytest
 
-from src.db import Base, Session, engine as shared_engine
-
 from src.cli import main  # noqa: E402
+from src.db import Base
+from src.db import engine as shared_engine
 
 POLICY = "policies/p5_composite.yaml"
 

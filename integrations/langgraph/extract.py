@@ -1,6 +1,8 @@
-from typing import Dict, Any, Optional
-from src.models import Action
+from typing import Any, Dict, Optional, cast
+
 from langgraph.graph import MessagesState
+from src.models import Action
+
 from .config import AgentWallConfig
 
 
@@ -35,7 +37,8 @@ def normalize_tool_call(
 
 	context: Dict[str, Any] = {}
 	context.update(tool_input)
-	context["thread_id"] = state.get("configurable", {}).get("thread_id", "unknown")
+	configurable = cast(Dict[str, Any], state.get("configurable", {}))
+	context["thread_id"] = configurable.get("thread_id", "unknown")
 	context["_message_count"] = len(state.get("messages", []))
 
 	# apply a custom context extractor if configured

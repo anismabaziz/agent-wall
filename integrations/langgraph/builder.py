@@ -1,12 +1,15 @@
-from typing import Union, Sequence, Callable, Any, Optional, Dict
+from typing import Any, Callable, Dict, Optional, Sequence, Union
+
 from langchain_core.tools import BaseTool
+
+from langgraph.graph import START, MessagesState, StateGraph
+from langgraph.prebuilt import tools_condition
+from src.audit import AuditLogger
 from src.engine import PolicyEngine
 from src.obligations import ObligationManager
-from src.audit import AuditLogger
+
 from .config import AgentWallConfig
 from .tool_node import AgentWallToolNode
-from langgraph.graph import MessagesState, StateGraph, START
-from langgraph.prebuilt import tools_condition
 
 
 def build_agent_wall_agent(

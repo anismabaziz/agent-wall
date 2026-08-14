@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta, timezone
+
 from freezegun import freeze_time
-from src.models import Action, load_policy, PolicySet, Permission, Obligation, Dispensation, ObligationStatus
+
 from src.engine import PolicyEngine
+from src.models import Action, Dispensation, Obligation, ObligationStatus, Permission, PolicySet, load_policy
 from src.obligations import ObligationManager
 
 
@@ -156,7 +158,7 @@ def test_late_dispensation_not_applied():
 			"is_managed_host": True
 		}
 	)
-	verdict = engine.evaluate(action1)
+	engine.evaluate(action1)
 
 	record = manager.register(
 		obligation_id="Ob_NotifyCISO",

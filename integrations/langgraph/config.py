@@ -1,5 +1,6 @@
 from typing import Any, Callable, TypedDict
 
+
 class AgentWallConfig(TypedDict, total=False):
     """Configuration for the AgentWall-LangGraph integration."""
 

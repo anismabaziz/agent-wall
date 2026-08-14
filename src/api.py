@@ -1,15 +1,18 @@
-from fastapi import FastAPI, Query
+import os
 from contextlib import asynccontextmanager
-from pydantic import BaseModel
-from typing import Optional, List
+from typing import List, Optional
 
-from src.models import Action, load_policy, ObligationStatus
-from src.engine import PolicyEngine
-from src.obligations import ObligationManager
-from src.obligation_store import ObligationStore
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
 from src.audit import AuditLogger
 from src.db import init_db
-
+from src.engine import PolicyEngine
+from src.models import Action, ObligationStatus, load_policy
+from src.obligation_store import ObligationStore
+from src.obligations import ObligationManager
+from src.rate_limit import SlidingWindowRateLimiter
 
 # global state
 POLICY_FILE = "policies/p5_composite.yaml"
@@ -18,6 +21,31 @@ audit_logger = AuditLogger(POLICY_FILE)
 engine = PolicyEngine(policy_set=policy, audit_logger=audit_logger)
 obligation_store = ObligationStore()
 obligation_manager = ObligationManager(poll_interval_seconds=10, audit_logger=audit_logger, store=obligation_store)
+
+# ---------------------------------------------------------------------------
+# Security knobs (all optional; see README).
+#   AGENT_WALL_API_KEY       -> require the X-API-Key header when set
+#   AGENT_WALL_RATE_LIMIT    -> max /evaluate requests per subject per minute
+#   AGENT_WALL_CORS_ORIGINS  -> comma-separated allowed origins (default "*")
+# ---------------------------------------------------------------------------
+API_KEY = os.getenv("AGENT_WALL_API_KEY")
+_rate_limit_raw = os.getenv("AGENT_WALL_RATE_LIMIT", "1000")
+RATE_LIMIT = int(_rate_limit_raw) if _rate_limit_raw.isdigit() else 1000
+CORS_ORIGINS = [o.strip() for o in os.getenv("AGENT_WALL_CORS_ORIGINS", "*").split(",") if o.strip()]
+_limiter = SlidingWindowRateLimiter(limit=RATE_LIMIT, window_seconds=60)
+
+
+def require_api_key(x_api_key: Optional[str] = Header(default=None)) -> None:
+	"""Reject unauthenticated requests when an API key is configured."""
+	if not API_KEY:
+		return
+	if x_api_key != API_KEY:
+		raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
+def _check_rate_limit(subject: str) -> None:
+	if RATE_LIMIT > 0 and not _limiter.allow(subject):
+		raise HTTPException(status_code=429, detail="Rate limit exceeded for subject")
 
 
 # start polling on startup
@@ -36,6 +64,14 @@ app = FastAPI(
 	lifespan=lifespan,
 )
 
+app.add_middleware(
+	CORSMiddleware,
+	allow_origins=CORS_ORIGINS,
+	allow_credentials=CORS_ORIGINS != ["*"],
+	allow_methods=["*"],
+	allow_headers=["*"],
+)
+
 
 class EvaluateRequest(BaseModel):
 	subject: str
@@ -51,7 +87,7 @@ class EvaluateResponse(BaseModel):
 
 
 
-@app.post("/evaluate", response_model=EvaluateResponse)
+@app.post("/evaluate", response_model=EvaluateResponse, dependencies=[Depends(require_api_key)])
 async def evaluate(request: EvaluateRequest):
 	action = Action(
 		subject=request.subject,
@@ -59,6 +95,8 @@ async def evaluate(request: EvaluateRequest):
 		resource=request.resource,
 		context=request.context
 	)
+
+	_check_rate_limit(request.subject)
 
 	verdict = engine.evaluate(action)
 
@@ -81,7 +119,7 @@ async def evaluate(request: EvaluateRequest):
 
 
 
-@app.get("/obligations")
+@app.get("/obligations", dependencies=[Depends(require_api_key)])
 async def list_obligations(
 	status: Optional[str] = Query(None, enum=["PENDING", "FULFILLED", "VIOLATED", "WAIVED"]),
 	limit: int = Query(100, ge=1, le=1000),
@@ -109,7 +147,7 @@ async def list_obligations(
 	]
 
 
-@app.get("/audit-log")
+@app.get("/audit-log", dependencies=[Depends(require_api_key)])
 async def get_audit_log(limit: int = Query(100, ge=1, le=1000), offset: int = Query(0, ge=0)):
 	return audit_logger.query(limit, offset)
 
