@@ -1,5 +1,9 @@
 # AgentWall
 
+[![CI](https://github.com/anismabaziz/agent-wall/actions/workflows/ci.yml/badge.svg)](https://github.com/anismabaziz/agent-wall/actions)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 **Deontic Policy Firewall for Agentic AI**
 
 AgentWall is a guardrail layer that sits between an AI agent and its tool-calling layer. Every action an agent proposes (e.g. `execute_payment`, `export_dataset`) is checked against a declarative policy written in YAML before it is allowed to run. The engine returns one of three verdicts:
@@ -12,8 +16,8 @@ Beyond simple allow/deny, AgentWall models deontic concepts used in real-world c
 
 | Concept | Meaning | Example |
 |---|---|---|
-| **Permission** | An action that is allowed when its constraints match | `execute_payment` when `is_high_value: true` **and** `has_treasury_approval: true` |
-| **Prohibition** | An action that is blocked when its constraints match | `execute_payment` when `is_high_value: true` |
+| **Permission** | An action that is allowed when its constraints match | `execute_payment` on a `CrossBorderTransfer` resource with a `TreasuryAuthority` credential |
+| **Prohibition** | An action that is blocked when its constraints match | `execute_payment` on any `HighValueTransaction` resource |
 | **Obligation** | A duty that must be performed after a permitted action, with a deadline | File a CTR with FinCEN within 15 days |
 | **Dispensation** | A waiver that cancels an obligation when its constraints match | Counterparty is exempt → no CTR needed |
 | **RulePriority** | Resolves *permission vs prohibition* conflicts | Approved high-value payment outranks the auto-prohibition |
@@ -71,6 +75,12 @@ uv run mypy src integrations
 uv run python -m uvicorn src.api:app --reload
 ```
 
+No Python setup? Run the same server from Docker instead:
+
+```bash
+./demo.sh   # builds the image, starts the API, runs the flagship payment scenario
+```
+
 ### Example: evaluate an action
 
 ```bash
@@ -80,7 +90,7 @@ curl -X POST http://localhost:8000/evaluate \
     "subject": "payments_agent_1",
     "action_type": "execute_payment",
     "resource": "transaction://high-value-001",
-    "context": {"is_high_value": true, "has_treasury_approval": true}
+    "context": {"_resource_types": ["CrossBorderTransfer"], "_credential_issuer": "TreasuryAuthority"}
   }'
 ```
 
@@ -200,6 +210,8 @@ A `TypedDict` controlling extraction. All keys are optional:
 | `obligation_poll_interval` | `int` | Seconds between deadline checks |
 | `default_subject` | `str` | Subject used when a tool call has no agent id |
 | `context_extractors` | `dict[str, Callable]` | Per-tool functions that enrich the `Action` context before evaluation |
+| `resource_classifier` | `Callable` | Operator-owned function that stages `_resource_types` for `matches_type` checks |
+| `credential_resolver` | `Callable` | Operator-owned function that stages `_credential_issuer` for `credential` checks |
 
 These correspond to the keys read by `build_agent_wall_agent` and `AgentWallToolNode`.
 
@@ -219,22 +231,29 @@ node = AgentWallToolNode(
 )
 ```
 
-### Using a custom context extractor
+### Staging authorization facts (classifier + credential resolver)
 
-Some policies need facts that aren't in the tool arguments. Register a per-tool extractor that reads the graph state and injects extra context:
+Some policies need facts the model must not assert itself, like the resource type or who approved the action. Stage them with operator-owned functions that read the graph state:
 
 ```python
-def enrich_with_state(tool_name, tool_input, state):
-    # Pull an approval flag from the agent/thread metadata.
-    return {"has_treasury_approval": state["configurable"]["approved"]}
+def classify_resource(tool_name, tool_input, state):
+    # Operator-owned: decide the resource type from trusted data.
+    if tool_input.get("amount", 0) > 10_000:
+        return ["CrossBorderTransfer"]
+    return ["Transaction"]
+
+def resolve_credential(tool_name, tool_input, state):
+    # Operator-owned: verify the approval credential, return its issuer.
+    return state["configurable"].get("credential_issuer")
 
 config = AgentWallConfig(
     default_subject="payments_agent_1",
-    context_extractors={"execute_payment": enrich_with_state},
+    resource_classifier=classify_resource,
+    credential_resolver=resolve_credential,
 )
 ```
 
-The extracted keys are merged into the `Action.context` and matched against the policy's permission/prohibition constraints (see [Policies](#policies)).
+The staged `_resource_types` and `_credential_issuer` are matched against the policy's `matches_type` / `credential` constraints (see [Policies](#policies)). Plain `context_extractors` still exist for inert report data, but any reserved keys they supply are stripped, so a tool call cannot authorize itself.
 
 See `integrations/langgraph/demo.py` for a runnable financial-services demo (requires a `GROQ_API_KEY`; it exits cleanly even on error).
 

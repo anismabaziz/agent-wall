@@ -76,3 +76,11 @@ indent-style = "tab"
 python_version = "3.12"
 ignore_missing_imports = true
 exclude = ["docs", "tests"]
+
+[tool.coverage.run]
+omit = ["integrations/langgraph/demo.py"]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.1.0",
+]
